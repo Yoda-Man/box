@@ -14,7 +14,7 @@ and the Flutter guide for
 Box is a lightweight and blazing fast key-value database written in pure Dart. 
 
 ## Features
-Box is a lightweight storage solution with optional encryption built in. its Simple, powerful, & intuitive API get's you up and running in no time.
+Box is a lightweight storage solution with optional encryption built in. Its simple, powerful, & intuitive API get's you up and running in no time.
 
 ## Getting started
 

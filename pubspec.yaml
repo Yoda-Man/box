@@ -1,10 +1,10 @@
-name: box
+name: boxx
 description: Fast Simple Secure NoSQL Storage
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/Yoda-Man/box
 
 environment:
-  sdk: '>=3.3.2 <4.0.0'
+  sdk: '>=3.3.3 <4.0.0'
   flutter: ">=3.0.0"
 
 dependencies:

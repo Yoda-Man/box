@@ -3,9 +3,13 @@ library box;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-
-import 'enum/mode.dart';
 import 'src/global.dart';
+
+/// Enctryption Modes
+enum EncryptionMode {
+  aes,
+  fernet,
+}
 
 /// Class to handle all local storage
 class Box {
