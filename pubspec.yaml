@@ -1,6 +1,6 @@
 name: boxx
-description: Fast Simple Secure NoSQL Storage
-version: 0.0.2
+description: Box is a lightweight and blazing fast key-value database written in pure Dart
+version: 0.0.3
 homepage: https://github.com/Yoda-Man/box
 
 environment:
@@ -15,7 +15,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^4.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -1,3 +1,7 @@
+## 0.0.3
+
+Added example, upgraded dependencies and added sanitize key function
+
 ## 0.0.2
 
 Tweak to make it easier to implement

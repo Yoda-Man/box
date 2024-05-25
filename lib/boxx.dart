@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'src/global.dart';
+import 'src/sanitize_filename.dart';
 
 /// Enctryption Modes
 enum EncryptionMode {
@@ -23,6 +24,7 @@ class Box {
   /// Save to local storage
   put(String key, dynamic value) async {
     try {
+      key = '${sanitizeFilename(key)}.boxx';
       if (!kIsWeb) {
         if (encryptionKey == null) {
           File('$path/$key').writeAsString(value);
@@ -45,6 +47,7 @@ class Box {
   /// Delete from local storage
   delete(String key) async {
     try {
+      key = '${sanitizeFilename(key)}.boxx';
       if (!kIsWeb) {
         File file = File('$path/$key');
         if (await file.exists()) {
@@ -60,6 +63,7 @@ class Box {
   Future<dynamic> get(String key) async {
     try {
       dynamic contents = '';
+      key = '${sanitizeFilename(key)}.boxx';
       if (!kIsWeb) {
         File file = File('$path/$key');
         if (await file.exists()) {
