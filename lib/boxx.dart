@@ -1,5 +1,3 @@
-library box;
-
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +16,7 @@ class Box {
 
   String? encryptionKey;
   EncryptionMode? mode;
+  File? lastFile;
 
   Box({required this.path, this.encryptionKey, this.mode});
 
@@ -50,12 +49,23 @@ class Box {
       key = '${sanitizeFilename(key)}.boxx';
       if (!kIsWeb) {
         File file = File('$path/$key');
+        lastFile = file;
         if (await file.exists()) {
           file.delete();
         }
       }
     } on Exception catch (e) {
       debugPrint(e.toString());
+    }
+  }
+
+  Future<bool> exists(String key) async {
+    if (!kIsWeb) {
+      File file = File('$path/$key');
+      lastFile = file;
+      return await file.exists();
+    } else {
+      return false;
     }
   }
 
@@ -66,6 +76,7 @@ class Box {
       key = '${sanitizeFilename(key)}.boxx';
       if (!kIsWeb) {
         File file = File('$path/$key');
+        lastFile = file;
         if (await file.exists()) {
           if (encryptionKey == null) {
             contents = await file.readAsString();

@@ -1,3 +1,7 @@
+## 0.0.4
+
+Added function to convert all AES keys to 256 bits internally. Upgraded dependencies.
+
 ## 0.0.3
 
 Added example, upgraded dependencies and added sanitize key function

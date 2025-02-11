@@ -1,10 +1,10 @@
 name: boxx
 description: Box is a lightweight and blazing fast key-value database written in pure Dart
-version: 0.0.3
+version: 0.0.4
 homepage: https://github.com/Yoda-Man/box
 
 environment:
-  sdk: '>=3.3.3 <4.0.0'
+  sdk: '>=3.6.2 <4.0.0'
   flutter: ">=3.0.0"
 
 dependencies:
@@ -15,13 +15,13 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
-flutter:
+# flutter:
 
   # To add assets to your package, add an assets section, like this:
   # assets:
