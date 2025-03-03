@@ -1,6 +1,4 @@
 import 'package:encrypt/encrypt.dart';
-import 'dart:convert';
-
 import 'global.dart';
 
 ///for AES Algorithms
@@ -10,13 +8,15 @@ class EncryptAES {
   ///AES encryption. AES keys must be exactly 128, 192, or 256 bits long, which corresponds to byte arrays of lengths
   ///16, 24, or 32, respectively.
   ///
-  String encryptAES(plainText, String encryptionKey) {
+  String encryptAES(String plainText, String encryptionKey) {
     try {
       String keyValue =
           String.fromCharCodes(padKeyWithZeros(encryptionKey, 32));
+      String ivValue = String.fromCharCodes(padKeyWithZeros(encryptionKey, 16));
       final key = Key.fromUtf8(keyValue);
-      final iv = IV.fromLength(32);
-      final encrypter = Encrypter(AES(key));
+
+      final iv = IV.fromUtf8(ivValue);
+      final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
       encrypted = encrypter.encrypt(plainText, iv: iv);
       return encrypted!.base64;
     } on Exception catch (e) {
@@ -24,14 +24,16 @@ class EncryptAES {
     }
   }
 
-  String decryptAES(plainText, String encryptionKey) {
+  String decryptAES(String encryptedText, String encryptionKey) {
     try {
       String keyValue =
           String.fromCharCodes(padKeyWithZeros(encryptionKey, 32));
+      String ivValue = String.fromCharCodes(padKeyWithZeros(encryptionKey, 16));
       final key = Key.fromUtf8(keyValue);
-      final iv = IV.fromLength(32);
-      final encrypter = Encrypter(AES(key));
-      encrypted = Encrypted.from64(plainText);
+
+      final iv = IV.fromUtf8(ivValue);
+      final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
+      encrypted = Encrypted.from64(encryptedText);
       // static var decrypted;
       var decrypted = encrypter.decrypt(encrypted!, iv: iv);
       return decrypted;
@@ -45,28 +47,28 @@ class EncryptAES {
 class EncryptFernet {
   static Encrypted? fernetEncrypted;
 
-  String encryptFernet(plainText, String encryptionKey) {
+  String encryptFernet(String plainText, String encryptionKey) {
     try {
-      final key = Key.fromUtf8(encryptionKey);
-      final b64key = Key.fromUtf8(base64Url.encode(key.bytes));
-      final fernet = Fernet(b64key);
+      //Fernet key must be 32 bit url-safe base64-encoded bytes
+      String keyValue = fernetKeyGenerator(encryptionKey);
+      final key = Key.fromBase64(keyValue);
+      final fernet = Fernet(key);
       final encrypter = Encrypter(fernet);
       fernetEncrypted = encrypter.encrypt(plainText);
       return fernetEncrypted!.base64; // random cipher text
-      // print(fernet.extractTimestamp(fernetEncrypted!.bytes));
     } on Exception catch (e) {
       return e.toString();
     }
   }
 
-  String decryptFernet(plainText, String encryptionKey) {
+  String decryptFernet(String encryptedText, String encryptionKey) {
     try {
-      final key = Key.fromUtf8(encryptionKey);
-      //final iv = IV.fromLength(16);
-      final b64key = Key.fromUtf8(base64Url.encode(key.bytes));
-      final fernet = Fernet(b64key);
+      //Fernet key must be 32 bit url-safe base64-encoded bytes
+      String keyValue = fernetKeyGenerator(encryptionKey);
+      final key = Key.fromBase64(keyValue);
+      final fernet = Fernet(key);
       final encrypter = Encrypter(fernet);
-      fernetEncrypted == Encrypted.from64(plainText);
+      fernetEncrypted == Encrypted.from64(encryptedText);
       var fernetDecrypted = encrypter.decrypt(fernetEncrypted!);
       return fernetDecrypted;
     } on Exception catch (e) {
