@@ -11,17 +11,17 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/developing-packages).
 -->
 
-Box is a lightweight and blazing fast key-value database written in pure Dart. 
+Boxx is a lightweight and blazing fast key-value database written in pure Dart. 
 
 ## Features
-Box is a lightweight storage solution with optional encryption built in. Its simple, powerful, & intuitive API get's you up and running in no time.
+Boxx is a lightweight storage solution with optional encryption built in. Its simple, powerful, & intuitive API get's you up and running in no time.
 
 ## Getting started
 
 
 Without Encryption
 ```dart
-late Box box;
+late Boxx box;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,10 +33,10 @@ Future<void> main() async {
 
 initBox() async {
   if (kIsWeb) {
-    box = Box(path: '');
+    box = Boxx(path: '');
   } else {
     final directory = await getApplicationDocumentsDirectory();
-    box = Box(path: directory.path);
+    box = Boxx(path: directory.path);
   }
 }
 
@@ -45,7 +45,7 @@ initBox() async {
 With Encryption
 
 ```dart
-late Box box;
+late Boxx box;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,10 +57,10 @@ Future<void> main() async {
 
 initBox() async {
   if (kIsWeb) {
-    box = Box(path: '',encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
+    box = Boxx(path: '',encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
   } else {
     final directory = await getApplicationDocumentsDirectory();
-    box = Box(path: directory.path,encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
+    box = Boxx(path: directory.path,encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
   }
 }
 
@@ -71,17 +71,17 @@ initBox() async {
 Delete
 
 ```dart
-    box.delete('UserData');
+    box.boxx.delete('UserData');
 ```
 
 Get
 ```dart
- final contents = await box.get('UserData');
+ final contents = await box.boxx.get('UserData');
 ```
 
 Put
 ```dart
-box.put('UserData', response.body);
+box.boxx.put('UserData', response.body);
 ```
 
 

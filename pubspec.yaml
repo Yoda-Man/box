@@ -1,16 +1,18 @@
 name: boxx
-description: Box is a lightweight and blazing fast key-value database written in pure Dart
-version: 0.0.5
+description: Boxx is a lightweight and blazing fast key-value database written in pure Dart
+version: 0.0.6
 homepage: https://github.com/Yoda-Man/box
 
 environment:
-  sdk: '>=3.6.2 <4.0.0'
+  sdk: '>=3.7.0 <4.0.0'
   flutter: ">=3.0.0"
 
 dependencies:
   encrypt: ^5.0.3
   flutter:
     sdk: flutter
+  indexed_db: ^1.0.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
