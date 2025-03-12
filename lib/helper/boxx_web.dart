@@ -33,7 +33,7 @@ class BoxxHelper implements BoxxInterface {
   }
 
   setup() async {
-    var dbName = 'boxx';
+    String dbName = 'boxx';
     result = await factory.openCreate(dbName, storeName);
     database = result.database;
     transaction = database.transactionList([storeName], 'readwrite');
