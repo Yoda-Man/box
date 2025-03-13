@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:indexed_db/indexed_db.dart' as idb;
+import 'package:indexed_db/indexed_db.dart';
 import '../src/encryption.dart';
 import '../boxx.dart';
 import 'boxx_interface.dart';
@@ -22,10 +22,10 @@ class BoxxHelper implements BoxxInterface {
   @override
   String path;
 
-  final factory = idb.IdbFactory();
-  late idb.OpenCreateResult result;
-  late idb.Database database;
-  late idb.Transaction transaction;
+  final factory = IdbFactory();
+  OpenCreateResult? result;
+  Database? database;
+  Transaction? transaction;
   static const storeName = 'boxx';
 
   /// Boxx setup for web
@@ -35,17 +35,31 @@ class BoxxHelper implements BoxxInterface {
 
   /// Boxx setup for web
   setup() async {
-    String dbName = 'boxx';
-    result = await factory.openCreate(dbName, storeName);
-    database = result.database;
-    transaction = database.transactionList([storeName], 'readwrite');
+    try {
+      String dbName = 'boxx';
+      result = await factory.openCreate(dbName, storeName);
+      database = result!.database;
+      transaction = database!.transactionList([storeName], 'readwrite');
+    } on Exception catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  checkTransaction() async {
+    if (transaction == null) {
+      await setup();
+    }
   }
 
   @override
   /// Delete from local storage
   Future<void> delete(String key) async {
     try {
-      await transaction.objectStore(storeName).delete(key);
+      checkTransaction();
+      if (transaction == null) {
+        return;
+      }
+      await transaction!.objectStore(storeName).delete(key);
     } on Exception catch (e) {
       debugPrint(e.toString());
     }
@@ -55,7 +69,11 @@ class BoxxHelper implements BoxxInterface {
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
     try {
-      int ressult = await transaction.objectStore(storeName).count(key);
+      checkTransaction();
+      if (transaction == null) {
+        return false;
+      }
+      int ressult = await transaction!.objectStore(storeName).count(key);
       if (ressult < 0) {
         return false;
       } else {
@@ -72,11 +90,14 @@ class BoxxHelper implements BoxxInterface {
   Future<dynamic> get(String key) async {
     try {
       dynamic contents = '';
-
+      checkTransaction();
+      if (transaction == null) {
+        return '';
+      }
       if (encryptionKey == null) {
-        contents = await transaction.objectStore(storeName).getObject(key);
+        contents = await transaction!.objectStore(storeName).getObject(key);
       } else {
-        contents = await transaction.objectStore(storeName).getObject(key);
+        contents = await transaction!.objectStore(storeName).getObject(key);
         if (mode == EncryptionMode.fernet) {
           contents = fernet.decryptFernet(contents, encryptionKey!);
         } else {
@@ -101,16 +122,20 @@ class BoxxHelper implements BoxxInterface {
   /// Save to local storage
   Future<void> put(String key, value) async {
     try {
+      checkTransaction();
+      if (transaction == null) {
+        return;
+      }
       if (encryptionKey == null) {
-        transaction.objectStore(storeName).put(value, key);
+        transaction!.objectStore(storeName).put(value, key);
       } else {
         if (mode == EncryptionMode.fernet) {
-          transaction
+          transaction!
               .objectStore(storeName)
               .put(fernet.encryptFernet(value, encryptionKey!), key);
         }
         {
-          transaction
+          transaction!
               .objectStore(storeName)
               .put(aes.encryptAES(value, encryptionKey!), key);
         }

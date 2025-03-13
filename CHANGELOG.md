@@ -1,3 +1,7 @@
+## 0.0.8
+
+Add error handling to web implimentation
+
 ## 0.0.7
 
 Tweak to make it easier to implement
