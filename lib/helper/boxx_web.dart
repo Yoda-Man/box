@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:indexed_db/indexed_db.dart' as idb;
 import '../src/encryption.dart';
-import '../src/enum.dart';
+import '../boxx.dart';
 import 'boxx_interface.dart';
 
 /// Boxx helper for web

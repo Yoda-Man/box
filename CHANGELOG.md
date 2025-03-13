@@ -1,3 +1,7 @@
+## 0.0.7
+
+Breaking changes to enable web support. Upgraded dependencies.
+
 ## 0.0.6
 
 Breaking changes to enable web support. Upgraded dependencies.
