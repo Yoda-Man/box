@@ -28,10 +28,12 @@ class BoxxHelper implements BoxxInterface {
   late idb.Transaction transaction;
   static const storeName = 'boxx';
 
+  /// Boxx setup for web
   BoxxHelper({required this.path, this.encryptionKey, this.mode}) {
     setup();
   }
 
+  /// Boxx setup for web
   setup() async {
     String dbName = 'boxx';
     result = await factory.openCreate(dbName, storeName);
