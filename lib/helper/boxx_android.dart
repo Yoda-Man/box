@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../boxx.dart';
 import '../src/encryption.dart';
-import '../src/enum.dart';
 import '../src/sanitize_filename.dart';
 import 'boxx_interface.dart';
 

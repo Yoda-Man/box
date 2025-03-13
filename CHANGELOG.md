@@ -1,3 +1,7 @@
+## 0.0.7
+
+Tweak to make it easier to implement
+
 ## 0.0.6
 
 Breaking changes to enable web support. Upgraded dependencies.

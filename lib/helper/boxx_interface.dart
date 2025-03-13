@@ -1,5 +1,5 @@
 import '../src/encryption.dart';
-import '../src/enum.dart';
+import '../boxx.dart';
 
 /// Blueprint for boxx platform classes, providing the structure that must be followed by boxx subclasses
 /// to maintain a consistent API. This ensures that developers using boxx have a predictable and standardized interface to work with
