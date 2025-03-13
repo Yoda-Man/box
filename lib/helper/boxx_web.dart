@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:indexed_db/indexed_db.dart';
+import 'package:web/web.dart';
 import '../src/encryption.dart';
 import '../boxx.dart';
 import 'boxx_interface.dart';
@@ -23,8 +25,7 @@ class BoxxHelper implements BoxxInterface {
   String path;
 
   final factory = IdbFactory();
-  OpenCreateResult? result;
-  Database? database;
+
   Transaction? transaction;
   static const storeName = 'boxx';
 
@@ -37,9 +38,27 @@ class BoxxHelper implements BoxxInterface {
   setup() async {
     try {
       String dbName = 'boxx';
-      result = await factory.openCreate(dbName, storeName);
-      database = result!.database;
-      transaction = database!.transactionList([storeName], 'readwrite');
+      Database database;
+      // Await the JSPromise and convert it to a JSArray
+      JSArray<IDBDatabaseInfo> jsArray =
+          await factory.idbObject.databases().toDart;
+
+      // Convert the JSArray to a Dart List of Strings
+      List<String> databases =
+          jsArray.toDart.map((dbInfo) {
+            // Assuming IDBDatabaseInfo has a 'name' property
+            return dbInfo.name;
+          }).toList();
+
+      if (databases.contains(dbName)) {
+        database = await factory.open(dbName);
+        transaction = database.transactionList([storeName], 'readwrite');
+      } else {
+        OpenCreateResult result;
+        result = await factory.openCreate(dbName, storeName);
+        database = result.database;
+        transaction = database.transactionList([storeName], 'readwrite');
+      }
     } on Exception catch (e) {
       debugPrint(e.toString());
     }
