@@ -10,8 +10,9 @@ class EncryptAES {
   ///
   String encryptAES(String plainText, String encryptionKey) {
     try {
-      String keyValue =
-          String.fromCharCodes(padKeyWithZeros(encryptionKey, 32));
+      String keyValue = String.fromCharCodes(
+        padKeyWithZeros(encryptionKey, 32),
+      );
       String ivValue = String.fromCharCodes(padKeyWithZeros(encryptionKey, 16));
       final key = Key.fromUtf8(keyValue);
 
@@ -26,8 +27,9 @@ class EncryptAES {
 
   String decryptAES(String encryptedText, String encryptionKey) {
     try {
-      String keyValue =
-          String.fromCharCodes(padKeyWithZeros(encryptionKey, 32));
+      String keyValue = String.fromCharCodes(
+        padKeyWithZeros(encryptionKey, 32),
+      );
       String ivValue = String.fromCharCodes(padKeyWithZeros(encryptionKey, 16));
       final key = Key.fromUtf8(keyValue);
 
