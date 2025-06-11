@@ -1,3 +1,11 @@
+## 0.1.0
+
+Upgraded dependencies
+
+## 0.0.9
+
+Improve web implimentation
+
 ## 0.0.8
 
 Add error handling to web implimentation
