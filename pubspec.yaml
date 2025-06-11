@@ -1,6 +1,6 @@
 name: boxx
 description: Boxx is a lightweight and blazing fast key-value database written in pure Dart
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/Yoda-Man/box
 
 platforms:

@@ -35,7 +35,7 @@ class BoxxHelper implements BoxxInterface {
   }
 
   /// Boxx setup for web
-  setup() async {
+  Future<void> setup() async {
     try {
       String dbName = 'boxx';
       Database database;
@@ -64,7 +64,7 @@ class BoxxHelper implements BoxxInterface {
     }
   }
 
-  checkTransaction() async {
+  Future<void> checkTransaction() async {
     if (transaction == null) {
       await setup();
     }
@@ -74,7 +74,7 @@ class BoxxHelper implements BoxxInterface {
   /// Delete from local storage
   Future<void> delete(String key) async {
     try {
-      checkTransaction();
+      await checkTransaction();
       if (transaction == null) {
         return;
       }
@@ -88,7 +88,7 @@ class BoxxHelper implements BoxxInterface {
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
     try {
-      checkTransaction();
+      await checkTransaction();
       if (transaction == null) {
         return false;
       }
@@ -109,7 +109,7 @@ class BoxxHelper implements BoxxInterface {
   Future<dynamic> get(String key) async {
     try {
       dynamic contents = '';
-      checkTransaction();
+      await checkTransaction();
       if (transaction == null) {
         return '';
       }
@@ -141,7 +141,7 @@ class BoxxHelper implements BoxxInterface {
   /// Save to local storage
   Future<void> put(String key, value) async {
     try {
-      checkTransaction();
+      await checkTransaction();
       if (transaction == null) {
         return;
       }
