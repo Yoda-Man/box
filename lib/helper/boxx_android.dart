@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../boxx.dart';
 import '../src/encryption.dart';
@@ -21,10 +22,21 @@ class BoxxHelper implements BoxxInterface {
   @override
   EncryptionMode? mode;
 
-  @override
-  String path;
+  late String path;
 
-  BoxxHelper({required this.path, this.encryptionKey, this.mode});
+  BoxxHelper({required this.mode, this.encryptionKey}) {
+    setup();
+  }
+
+  /// Boxx setup for non web
+  Future<void> setup() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      path = directory.path;
+    } on Exception catch (e) {
+      debugPrint(e.toString());
+    }
+  }
 
   @override
   /// Delete from local storage
@@ -48,6 +60,24 @@ class BoxxHelper implements BoxxInterface {
     } on Exception catch (e) {
       debugPrint(e.toString());
       return false;
+    }
+  }
+
+  @override
+  /// Clear all data from local storage
+  Future<void> clear() async {
+    try {
+      Directory dir = Directory(path);
+      if (await dir.exists()) {
+        List<FileSystemEntity> files = dir.listSync();
+        for (FileSystemEntity file in files) {
+          if (file is File) {
+            await file.delete();
+          }
+        }
+      }
+    } on Exception catch (e) {
+      debugPrint(e.toString());
     }
   }
 
@@ -78,7 +108,6 @@ class BoxxHelper implements BoxxInterface {
     }
   }
 
-  @override
   ///Get key path
   String keyPath(String key) {
     key = '${sanitizeFilename(key)}.boxx';

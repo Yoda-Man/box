@@ -11,38 +11,37 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/developing-packages).
 -->
 
-Boxx is a lightweight and blazing fast key-value database written in pure Dart. 
+Store, retrieve, and protect your data effortlessly with AES or Fernet encryption. Whether you need blazing-fast key-value storage or encrption Boxx has you covered. 
 
 ## Features
 Boxx is a lightweight storage solution with optional encryption built in. Its simple, powerful, & intuitive API get's you up and running in no time.
 
+✅ Simple – Easy-to-use key-value interface
+✅ Secure – Choose between AES-256 or Fernet encryption
+✅ Versatile – Perfect for configs, secrets, or sensitive data
+
 ## Getting started
 
 
-Without Encryption
+Storage Without Encryption
 ```dart
 late Boxx box;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await initBox();
+  initBox();
 }
 
 
 
-initBox() async {
-  if (kIsWeb) {
-    box = Boxx(path: '');
-  } else {
-    final directory = await getApplicationDocumentsDirectory();
-    box = Boxx(path: directory.path);
-  }
+initBox() {
+    box = Boxx(mode: EncryptionMode.none);
 }
 
 ```
 
-With Encryption
+Storage With Encryption
 
 ```dart
 late Boxx box;
@@ -50,18 +49,13 @@ late Boxx box;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await initBox();
+  initBox();
 }
 
 
 
-initBox() async {
-  if (kIsWeb) {
-    box = Boxx(path: '',encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
-  } else {
-    final directory = await getApplicationDocumentsDirectory();
-    box = Boxx(path: directory.path,encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
-  }
+initBox() {
+    box = Boxx(mode: EncryptionMode.aes,encryptionKey: 'xxxxxxxx');
 }
 
 ```
@@ -84,8 +78,21 @@ Put
 box.boxx.put('UserData', response.body);
 ```
 
+AES encrption
+```dart
+  String t1 = box.aes.encryptAES('Hello World', box.encryptionKey!);
+  debugPrint(t1);
+  String t2 = box.aes.decryptAES(t1, box.encryptionKey!);
+  debugPrint(t2);
+```
 
-
+Fernet encryption
+```dart
+  String t3 = box.fernet.encryptFernet('Hello World', box.encryptionKey!);
+  debugPrint(t3);
+  String t4 = box.fernet.decryptFernet(t1, box.encryptionKey!);
+  debugPrint(t4);
+```
 ## Additional information
 
 Box supports 2 Encryption Algorithms 1) AES Algorithms 2) Fernet Algorithms

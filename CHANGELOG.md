@@ -1,3 +1,7 @@
+## 0.1.2
+
+Change initialisation to make it quicker and easier to impliment and consistent accros all platforms.
+
 ## 0.1.1
 
 Clean up for web

@@ -1,6 +1,6 @@
 name: boxx
-description: Boxx is a lightweight and blazing fast key-value database written in pure Dart
-version: 0.1.1
+description: Boxx is your ultimate key-value storage plugin with built-in encryption
+version: 0.1.2
 homepage: https://github.com/Yoda-Man/box
 
 platforms:
@@ -20,6 +20,7 @@ dependencies:
   flutter:
     sdk: flutter
   indexed_db: ^1.0.1
+  path_provider: ^2.1.5
   web: ^1.1.1
 
 dev_dependencies:

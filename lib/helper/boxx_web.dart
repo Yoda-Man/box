@@ -21,16 +21,13 @@ class BoxxHelper implements BoxxInterface {
   @override
   EncryptionMode? mode;
 
-  @override
-  String path;
-
   final factory = IdbFactory();
 
   Transaction? transaction;
   static const storeName = 'boxx';
 
   /// Boxx setup for web
-  BoxxHelper({required this.path, this.encryptionKey, this.mode}) {
+  BoxxHelper({required this.mode, this.encryptionKey}) {
     setup();
   }
 
@@ -135,6 +132,20 @@ class BoxxHelper implements BoxxInterface {
   String keyPath(String key) {
     //This is not available for web
     return '';
+  }
+
+  @override
+  /// Clear all data from local storage
+  Future<void> clear() async {
+    try {
+      await checkTransaction();
+      if (transaction == null) {
+        return;
+      }
+      transaction!.objectStore(storeName).clear();
+    } on Exception catch (e) {
+      debugPrint(e.toString());
+    }
   }
 
   @override
