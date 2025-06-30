@@ -17,8 +17,11 @@ Store, retrieve, and protect your data effortlessly with AES or Fernet encryptio
 Boxx is a lightweight storage solution with optional encryption built in. Its simple, powerful, & intuitive API get's you up and running in no time.
 
 ✅ Simple – Easy-to-use key-value interface
+
 ✅ Secure – Choose between AES-256 or Fernet encryption
+
 ✅ Versatile – Perfect for configs, secrets, or sensitive data
+
 
 ## Getting started
 
@@ -93,6 +96,3 @@ Fernet encryption
   String t4 = box.fernet.decryptFernet(t1, box.encryptionKey!);
   debugPrint(t4);
 ```
-## Additional information
-
-Box supports 2 Encryption Algorithms 1) AES Algorithms 2) Fernet Algorithms
