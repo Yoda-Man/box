@@ -110,28 +110,17 @@ class BoxxHelper implements BoxxInterface {
       if (transaction == null) {
         return '';
       }
-      if (encryptionKey == null) {
-        contents = await transaction!.objectStore(storeName).getObject(key);
-      } else {
-        contents = await transaction!.objectStore(storeName).getObject(key);
-        if (mode == EncryptionMode.fernet) {
-          contents = fernet.decryptFernet(contents, encryptionKey!);
-        } else {
-          contents = aes.decryptAES(contents, encryptionKey!);
-        }
+      contents = await transaction!.objectStore(storeName).getObject(key);
+      if (mode == EncryptionMode.fernet && encryptionKey != null) {
+        contents = fernet.decryptFernet(contents, encryptionKey!);
+      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+        contents = aes.decryptAES(contents, encryptionKey!);
       }
       return contents;
     } on Exception catch (e) {
       debugPrint(e.toString());
       return '';
     }
-  }
-
-  @override
-  ///Get key path
-  String keyPath(String key) {
-    //This is not available for web
-    return '';
   }
 
   @override
@@ -156,19 +145,16 @@ class BoxxHelper implements BoxxInterface {
       if (transaction == null) {
         return;
       }
-      if (encryptionKey == null) {
-        transaction!.objectStore(storeName).put(value, key);
+      if (mode == EncryptionMode.fernet && encryptionKey != null) {
+        transaction!
+            .objectStore(storeName)
+            .put(fernet.encryptFernet(value, encryptionKey!), key);
+      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+        transaction!
+            .objectStore(storeName)
+            .put(aes.encryptAES(value, encryptionKey!), key);
       } else {
-        if (mode == EncryptionMode.fernet) {
-          transaction!
-              .objectStore(storeName)
-              .put(fernet.encryptFernet(value, encryptionKey!), key);
-        }
-        {
-          transaction!
-              .objectStore(storeName)
-              .put(aes.encryptAES(value, encryptionKey!), key);
-        }
+        transaction!.objectStore(storeName).put(value, key);
       }
     } on Exception catch (e) {
       debugPrint(e.toString());

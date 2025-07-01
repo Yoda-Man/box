@@ -10,12 +10,11 @@ abstract class BoxxInterface {
   EncryptAES aes = EncryptAES();
   EncryptFernet fernet = EncryptFernet();
 
-  BoxxInterface({this.encryptionKey, this.mode});
+  BoxxInterface({required this.mode, this.encryptionKey});
 
   Future<void> put(String key, dynamic value);
   Future<void> delete(String key);
   Future<bool> exists(String key);
   Future<dynamic> get(String key);
   Future<void> clear();
-  String keyPath(String key);
 }

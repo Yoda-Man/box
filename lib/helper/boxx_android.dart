@@ -89,15 +89,11 @@ class BoxxHelper implements BoxxInterface {
 
       File file = File(keyPath(key));
       if (await file.exists()) {
-        if (encryptionKey == null) {
-          contents = await file.readAsString();
-        } else {
-          contents = await file.readAsString();
-          if (mode == EncryptionMode.fernet) {
-            contents = fernet.decryptFernet(contents, encryptionKey!);
-          } else {
-            contents = aes.decryptAES(contents, encryptionKey!);
-          }
+        contents = await file.readAsString();
+        if (mode == EncryptionMode.fernet && encryptionKey != null) {
+          contents = fernet.decryptFernet(contents, encryptionKey!);
+        } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+          contents = aes.decryptAES(contents, encryptionKey!);
         }
       }
 
@@ -118,19 +114,14 @@ class BoxxHelper implements BoxxInterface {
   /// Save to local storage
   Future<void> put(String key, dynamic value) async {
     try {
-      if (encryptionKey == null) {
-        File(keyPath(key)).writeAsString(value);
+      if (mode == EncryptionMode.fernet && encryptionKey != null) {
+        File(
+          keyPath(key),
+        ).writeAsString(fernet.encryptFernet(value, encryptionKey!));
+      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+        File(keyPath(key)).writeAsString(aes.encryptAES(value, encryptionKey!));
       } else {
-        if (mode == EncryptionMode.fernet) {
-          File(
-            keyPath(key),
-          ).writeAsString(fernet.encryptFernet(value, encryptionKey!));
-        }
-        {
-          File(
-            keyPath(key),
-          ).writeAsString(aes.encryptAES(value, encryptionKey!));
-        }
+        File(keyPath(key)).writeAsString(value);
       }
     } on Exception catch (e) {
       debugPrint(e.toString());
