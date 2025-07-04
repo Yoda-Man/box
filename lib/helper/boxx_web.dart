@@ -40,8 +40,8 @@ class BoxxHelper implements BoxxInterface {
       onUpgradeNeeded: (VersionChangeEvent e) {
         // Create object stores (tables) if they don't exist
         final db = (e.target as OpenDBRequest).result;
-        if (!db.objectStoreNames.contains('myStore')) {
-          db.createObjectStore('myStore', keyPath: 'id');
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, keyPath: 'id');
         }
       },
     );
