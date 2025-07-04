@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
-import 'package:indexed_db/indexed_db.dart';
-import 'package:web/web.dart';
+import 'package:idb_shim/idb_browser.dart';
 import '../src/encryption.dart';
 import '../boxx.dart';
 import 'boxx_interface.dart';
@@ -21,63 +19,49 @@ class BoxxHelper implements BoxxInterface {
   @override
   EncryptionMode? mode;
 
-  final factory = IdbFactory();
-
-  Transaction? transaction;
   static const storeName = 'boxx';
+  static const dbName = 'boxx';
 
   /// Boxx setup for web
   BoxxHelper({required this.mode, this.encryptionKey}) {
-    setup();
-  }
-
-  /// Boxx setup for web
-  Future<void> setup() async {
     try {
-      String dbName = 'boxx';
-      Database database;
-      // Await the JSPromise and convert it to a JSArray
-      JSArray<IDBDatabaseInfo> jsArray =
-          await factory.idbObject.databases().toDart;
-
-      // Convert the JSArray to a Dart List of Strings
-      List<String> databases =
-          jsArray.toDart.map((dbInfo) {
-            // Assuming IDBDatabaseInfo has a 'name' property
-            return dbInfo.name;
-          }).toList();
-
-      if (databases.contains(dbName)) {
-        database = await factory.open(dbName);
-        transaction = database.transactionList([storeName], 'readwrite');
-      } else {
-        OpenCreateResult result;
-        result = await factory.openCreate(dbName, storeName);
-        database = result.database;
-        transaction = database.transactionList([storeName], 'readwrite');
-      }
+      _initDB();
     } on Exception catch (e) {
       debugPrint(e.toString());
     }
   }
 
-  Future<void> checkTransaction() async {
-    if (transaction == null) {
-      await setup();
-    }
+  Future<Database> _initDB() async {
+    // Open the database (creates it if it doesn't exist)
+    final factory = getIdbFactory();
+    final db = await factory!.open(
+      dbName,
+      version: 1,
+      onUpgradeNeeded: (VersionChangeEvent e) {
+        // Create object stores (tables) if they don't exist
+        final db = (e.target as OpenDBRequest).result;
+        if (!db.objectStoreNames.contains('myStore')) {
+          db.createObjectStore('myStore', keyPath: 'id');
+        }
+      },
+    );
+    return db;
   }
 
   @override
   /// Delete from local storage
   Future<void> delete(String key) async {
     try {
-      await checkTransaction();
-      if (transaction == null) {
-        return;
-      }
-      await transaction!.objectStore(storeName).delete(key);
-    } on Exception catch (e) {
+      final db = await _initDB();
+      final transaction = db.transaction(storeName, 'readwrite');
+      final store = transaction.objectStore(storeName);
+
+      await store.delete(key);
+      await transaction.completed;
+      db.close();
+    } catch (e) {
       debugPrint(e.toString());
+      //rethrow;
     }
   }
 
@@ -85,12 +69,13 @@ class BoxxHelper implements BoxxInterface {
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
     try {
-      await checkTransaction();
-      if (transaction == null) {
-        return false;
-      }
-      int ressult = await transaction!.objectStore(storeName).count(key);
-      if (ressult < 0) {
+      final db = await _initDB();
+      final transaction = db.transaction(storeName, 'readonly');
+      final store = transaction.objectStore(storeName);
+
+      final data = await store.getObject(key);
+
+      if (data == null) {
         return false;
       } else {
         return true;
@@ -105,21 +90,22 @@ class BoxxHelper implements BoxxInterface {
   /// Get from local storage
   Future<dynamic> get(String key) async {
     try {
-      dynamic contents = '';
-      await checkTransaction();
-      if (transaction == null) {
-        return '';
-      }
-      contents = await transaction!.objectStore(storeName).getObject(key);
+      final db = await _initDB();
+      final transaction = db.transaction(storeName, 'readonly');
+      final store = transaction.objectStore(storeName);
+
+      dynamic data = await store.getObject(key);
       if (mode == EncryptionMode.fernet && encryptionKey != null) {
-        contents = fernet.decryptFernet(contents, encryptionKey!);
+        data = fernet.decryptFernet(data, encryptionKey!);
       } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        contents = aes.decryptAES(contents, encryptionKey!);
+        data = aes.decryptAES(data, encryptionKey!);
       }
-      return contents;
-    } on Exception catch (e) {
+      await transaction.completed;
+      db.close();
+      return data;
+    } catch (e) {
       debugPrint(e.toString());
-      return '';
+      //rethrow;
     }
   }
 
@@ -127,11 +113,10 @@ class BoxxHelper implements BoxxInterface {
   /// Clear all data from local storage
   Future<void> clear() async {
     try {
-      await checkTransaction();
-      if (transaction == null) {
-        return;
-      }
-      transaction!.objectStore(storeName).clear();
+      final db = await _initDB();
+      final transaction = db.transaction(storeName, 'readwrite');
+      final store = transaction.objectStore(storeName);
+      store.clear();
     } on Exception catch (e) {
       debugPrint(e.toString());
     }
@@ -141,23 +126,23 @@ class BoxxHelper implements BoxxInterface {
   /// Save to local storage
   Future<void> put(String key, value) async {
     try {
-      await checkTransaction();
-      if (transaction == null) {
-        return;
-      }
+      final db = await _initDB();
+      final transaction = db.transaction(storeName, 'readwrite');
+      final store = transaction.objectStore(storeName);
+
       if (mode == EncryptionMode.fernet && encryptionKey != null) {
-        transaction!
-            .objectStore(storeName)
-            .put(fernet.encryptFernet(value, encryptionKey!), key);
+        await store.put(fernet.encryptFernet(value, encryptionKey!), key);
       } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        transaction!
-            .objectStore(storeName)
-            .put(aes.encryptAES(value, encryptionKey!), key);
+        await store.put(aes.encryptAES(value, encryptionKey!), key);
       } else {
-        transaction!.objectStore(storeName).put(value, key);
+        await store.put(value, key);
       }
-    } on Exception catch (e) {
+
+      await transaction.completed;
+      db.close();
+    } catch (e) {
       debugPrint(e.toString());
+      //rethrow;
     }
   }
 }

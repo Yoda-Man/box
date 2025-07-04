@@ -1,6 +1,6 @@
 name: boxx
 description: Boxx is your ultimate key-value storage plugin with built-in encryption
-version: 0.1.3
+version: 0.1.4
 homepage: https://github.com/Yoda-Man/box
 
 platforms:
@@ -12,14 +12,14 @@ platforms:
   web:
 
 environment:
-  sdk: '>=3.7.0 <4.0.0'
+  sdk: '>=3.8.1 <4.0.0'
   flutter: ">=3.0.0"
 
 dependencies:
   encrypt: ^5.0.3
   flutter:
     sdk: flutter
-  indexed_db: ^1.0.1
+  idb_shim: ^2.6.7
   path_provider: ^2.1.5
   web: ^1.1.1
 
