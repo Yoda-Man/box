@@ -1,3 +1,31 @@
+## 0.1.5
+
+Change web implimentation
+
+## 0.1.4
+
+Change web implimentation
+
+## 0.1.3
+
+Code Clean Up
+
+## 0.1.2
+
+Change initialisation to make it quicker and easier to impliment and consistent accros all platforms.
+
+## 0.1.1
+
+Clean up for web
+
+## 0.1.0
+
+Upgraded dependencies
+
+## 0.0.9
+
+Improve web implimentation
+
 ## 0.0.8
 
 Add error handling to web implimentation

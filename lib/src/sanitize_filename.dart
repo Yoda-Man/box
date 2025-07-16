@@ -2,22 +2,11 @@
 String sanitizeFilename(String input, {String replacement = ''}) {
   final result = input
       // illegalRe
-      .replaceAll(
-        RegExp(r'[\/\?<>\\:\*\|"]'),
-        replacement,
-      )
+      .replaceAll(RegExp(r'[\/\?<>\\:\*\|"]'), replacement)
       // controlRe
-      .replaceAll(
-        RegExp(
-          r'[\x00-\x1f\x80-\x9f]',
-        ),
-        replacement,
-      )
+      .replaceAll(RegExp(r'[\x00-\x1f\x80-\x9f]'), replacement)
       // reservedRe
-      .replaceFirst(
-        RegExp(r'^\.+$'),
-        replacement,
-      )
+      .replaceFirst(RegExp(r'^\.+$'), replacement)
       // windowsReservedRe
       .replaceFirst(
         RegExp(

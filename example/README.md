@@ -1,29 +1,24 @@
 # Example of usage `boxx`
 
-Without Encryption
+Storage Without Encryption
 ```dart
 late Boxx box;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await initBox();
+  initBox();
 }
 
 
 
-initBox() async {
-  if (kIsWeb) {
-    box = Boxx(path: '');
-  } else {
-    final directory = await getApplicationDocumentsDirectory();
-    box = Boxx(path: directory.path);
-  }
+initBox() {
+  box = Boxx(mode: EncryptionMode.none);
 }
 
 ```
 
-With Encryption
+Storage With Encryption
 
 ```dart
 late Boxx box;
@@ -36,13 +31,8 @@ Future<void> main() async {
 
 
 
-initBox() async {
-  if (kIsWeb) {
-    box = Boxx(path: '',encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
-  } else {
-    final directory = await getApplicationDocumentsDirectory();
-    box = Boxx(path: directory.path,encryptionKey: 'xxxxxxxx',mode: EncryptionMode.aes);
-  }
+initBox() {
+  box = Boxx(mode: EncryptionMode.aes,encryptionKey: 'xxxxxxxx');
 }
 
 ```
@@ -63,4 +53,20 @@ Get
 Put
 ```dart
 box.boxx.put('UserData', response.body);
+```
+
+AES encrption
+```dart
+  String t1 = box.aes.encryptAES('Hello World', box.encryptionKey!);
+  debugPrint(t1);
+  String t2 = box.aes.decryptAES(t1, box.encryptionKey!);
+  debugPrint(t2);
+```
+
+Fernet encryption
+```dart
+  String t3 = box.fernet.encryptFernet('Hello World', box.encryptionKey!);
+  debugPrint(t3);
+  String t4 = box.fernet.decryptFernet(t1, box.encryptionKey!);
+  debugPrint(t4);
 ```

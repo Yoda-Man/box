@@ -7,21 +7,12 @@ import 'boxx_web.dart' as boxx_web;
 
 /// Load appropriate Boxx interface for platform
 BoxxInterface getBoxxInterface({
-  required String path,
+  required EncryptionMode? mode,
   String? encryptionKey,
-  EncryptionMode? mode,
 }) {
   if (kIsWeb) {
-    return boxx_web.BoxxHelper(
-      path: path,
-      encryptionKey: encryptionKey,
-      mode: mode,
-    );
+    return boxx_web.BoxxHelper(mode: mode, encryptionKey: encryptionKey);
   } else {
-    return boxx_android.BoxxHelper(
-      path: path,
-      encryptionKey: encryptionKey,
-      mode: mode,
-    );
+    return boxx_android.BoxxHelper(mode: mode, encryptionKey: encryptionKey);
   }
 }
