@@ -1,3 +1,7 @@
+## 0.1.6
+
+Breaking changes to make package easier and simpler to use
+
 ## 0.1.5
 
 Change web implimentation

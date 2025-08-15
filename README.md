@@ -26,7 +26,7 @@ Boxx is a lightweight storage solution with optional encryption built in. Its si
 ## Getting started
 
 
-Storage Without Encryption
+Without Encryption
 ```dart
 late Boxx box;
 
@@ -44,7 +44,7 @@ initBox() {
 
 ```
 
-Storage With Encryption
+With Encryption
 
 ```dart
 late Boxx box;
@@ -68,31 +68,24 @@ initBox() {
 Delete
 
 ```dart
-    box.boxx.delete('UserData');
+    box.delete('UserData');
 ```
 
 Get
 ```dart
- final contents = await box.boxx.get('UserData');
+ final contents = await box.get('UserData');
 ```
 
 Put
 ```dart
-box.boxx.put('UserData', response.body);
+box.put('UserData', response.body);
 ```
 
-AES encrption
+encrption/decryption
 ```dart
-  String t1 = box.aes.encryptAES('Hello World', box.encryptionKey!);
+  String t1 = box.encrypt('Hello World');
   debugPrint(t1);
-  String t2 = box.aes.decryptAES(t1, box.encryptionKey!);
+  String t2 = box.decrypt(t1);
   debugPrint(t2);
 ```
 
-Fernet encryption
-```dart
-  String t3 = box.fernet.encryptFernet('Hello World', box.encryptionKey!);
-  debugPrint(t3);
-  String t4 = box.fernet.decryptFernet(t1, box.encryptionKey!);
-  debugPrint(t4);
-```
