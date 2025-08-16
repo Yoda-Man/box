@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  test('Fast Storage Tests', () {
+  test('Fast Storage Tests', () async {
     final boxx = Boxx(mode: EncryptionMode.none);
     expect(boxx.put('2', '2'), '');
     expect(boxx.get('2'), '2');
@@ -11,7 +11,7 @@ void main() {
     expect(boxx.get('2'), null);
   });
 
-  test('AES Encryption Storage Tests', () {
+  test('AES Encryption Storage Tests', () async {
     final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'testpassword');
     expect(boxx.put('key', 'value'), '');
     expect(boxx.get('key'), 'value');
@@ -19,7 +19,7 @@ void main() {
     expect(boxx.get('key'), null);
   });
 
-  test('Ferret Encryption Storage Tests', () {
+  test('Ferret Encryption Storage Tests', () async {
     final boxx = Boxx(mode: EncryptionMode.fernet, encryptionKey: 'ferretpass');
     expect(boxx.put('ferretKey', 'ferretValue'), '');
     expect(boxx.get('ferretKey'), 'ferretValue');
@@ -27,7 +27,7 @@ void main() {
     expect(boxx.get('ferretKey'), null);
   });
 
-  test('String Encryption/Decryption Tests - AES', () {
+  test('String Encryption/Decryption Tests - AES', () async {
     final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'stringkey123');
     final originalString = 'SensitiveData123!@#';
     expect(boxx.put('encKey', originalString), '');
@@ -37,7 +37,7 @@ void main() {
     expect(boxx.get('encKey'), null);
   });
 
-  test('String Encryption/Decryption Tests - Fernet', () {
+  test('String Encryption/Decryption Tests - Fernet', () async {
     final boxx = Boxx(
       mode: EncryptionMode.fernet,
       encryptionKey: 'fernetstringkey',
@@ -50,7 +50,7 @@ void main() {
     expect(boxx.get('fernetEncKey'), null);
   });
 
-  test('Empty String Storage Test', () {
+  test('Empty String Storage Test', () async {
     final boxx = Boxx(mode: EncryptionMode.none);
     expect(boxx.put('empty', ''), '');
     expect(boxx.get('empty'), '');
@@ -58,7 +58,7 @@ void main() {
     expect(boxx.get('empty'), null);
   });
 
-  test('Unicode String Encryption Test - AES', () {
+  test('Unicode String Encryption Test - AES', () async {
     final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'unicodekey');
     final unicodeString = 'こんにちは世界🌏';
     expect(boxx.put('unicodeKey', unicodeString), '');
@@ -66,7 +66,7 @@ void main() {
     expect(boxx.delete('unicodeKey'), '');
     expect(boxx.get('unicodeKey'), null);
   });
-  test('Boxx.encrypt and Boxx.decrypt - AES', () {
+  test('Boxx.encrypt and Boxx.decrypt - AES', () async {
     final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'aesEncryptKey');
     final plainText = 'EncryptThisText123!';
     final encrypted = boxx.encrypt(plainText);
@@ -75,7 +75,7 @@ void main() {
     expect(decrypted, plainText);
   });
 
-  test('Boxx.encrypt and Boxx.decrypt - Fernet', () {
+  test('Boxx.encrypt and Boxx.decrypt - Fernet', () async {
     final boxx = Boxx(
       mode: EncryptionMode.fernet,
       encryptionKey: 'fernetEncryptKey',
@@ -87,7 +87,7 @@ void main() {
     expect(decrypted, plainText);
   });
 
-  test('Boxx.encrypt and Boxx.decrypt - Unicode String', () {
+  test('Boxx.encrypt and Boxx.decrypt - Unicode String', () async {
     final boxx = Boxx(
       mode: EncryptionMode.aes,
       encryptionKey: 'unicodeEncryptKey',
@@ -99,7 +99,7 @@ void main() {
     expect(decrypted, unicodeText);
   });
 
-  test('Boxx.encrypt and Boxx.decrypt - Empty String', () {
+  test('Boxx.encrypt and Boxx.decrypt - Empty String', () async {
     final boxx = Boxx(
       mode: EncryptionMode.aes,
       encryptionKey: 'emptyEncryptKey',

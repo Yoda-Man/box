@@ -1,6 +1,6 @@
 ## 0.1.6
 
-Breaking changes to make package easier and simpler to use
+Breaking changes to make package easier and simpler to use. Added unit tests.
 
 ## 0.1.5
 
