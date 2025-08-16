@@ -2,6 +2,7 @@ import 'package:boxx/boxx.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('Fast Storage Tests', () {
     final boxx = Boxx(mode: EncryptionMode.none);
     expect(boxx.put('2', '2'), '');

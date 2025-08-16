@@ -44,6 +44,7 @@ class Boxx {
 
   /// Get from local storage
   /// This will return the value stored in the local storage with the key
+  /// If the key does not exist, it will return null
   Future<dynamic> get(String key) async {
     return _platform.get(key);
   }
@@ -57,6 +58,11 @@ class Boxx {
   /// Encrypt data using AES/Fernet
   /// This will encrypt the data using AES encryption with the provided encryption key
   String encrypt(String data) {
+    /// Check if data is empty
+    /// If it is empty, return an empty string
+    if (data.isEmpty) {
+      return '';
+    }
     if (mode == EncryptionMode.aes && encryptionKey != null) {
       return _platform.aes.encryptAES(data, encryptionKey!);
     } else if (mode == EncryptionMode.fernet && encryptionKey != null) {
@@ -71,6 +77,11 @@ class Boxx {
   /// Decrypt data using AES/Fernet
   /// This will decrypt the data using AES decryption with the provided encryption key
   String decrypt(String data) {
+    /// Check if data is empty
+    /// If it is empty, return an empty string
+    if (data.isEmpty) {
+      return '';
+    }
     if (mode == EncryptionMode.aes && encryptionKey != null) {
       return _platform.aes.decryptAES(data, encryptionKey!);
     } else if (mode == EncryptionMode.fernet && encryptionKey != null) {
