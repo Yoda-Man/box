@@ -7,7 +7,7 @@ class EncryptAES {
 
   ///AES encryption. AES keys must be exactly 128, 192, or 256 bits long, which corresponds to byte arrays of lengths
   ///16, 24, or 32, respectively.
-  ///
+  ///Performs AES encryption and returns a base64 encoded string
   String encryptAES(String plainText, String encryptionKey) {
     try {
       String keyValue = String.fromCharCodes(
@@ -25,6 +25,7 @@ class EncryptAES {
     }
   }
 
+  /// Performs AES decryption
   String decryptAES(String encryptedText, String encryptionKey) {
     try {
       String keyValue = String.fromCharCodes(
@@ -49,6 +50,7 @@ class EncryptAES {
 class EncryptFernet {
   static Encrypted? fernetEncrypted;
 
+  /// Performs fernet encryption and returns a base64 encoded string
   String encryptFernet(String plainText, String encryptionKey) {
     try {
       //Fernet key must be 32 bit url-safe base64-encoded bytes
@@ -63,6 +65,7 @@ class EncryptFernet {
     }
   }
 
+  /// Performs fernet decryption
   String decryptFernet(String encryptedText, String encryptionKey) {
     try {
       //Fernet key must be 32 bit url-safe base64-encoded bytes

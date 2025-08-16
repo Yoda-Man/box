@@ -22,7 +22,7 @@ class BoxxHelper implements BoxxInterface {
   @override
   EncryptionMode? mode;
 
-  late String path;
+  String? path;
 
   BoxxHelper({required this.mode, this.encryptionKey}) {
     setup();
@@ -67,12 +67,17 @@ class BoxxHelper implements BoxxInterface {
   /// Clear all data from local storage
   Future<void> clear() async {
     try {
-      Directory dir = Directory(path);
-      if (await dir.exists()) {
-        List<FileSystemEntity> files = dir.listSync();
-        for (FileSystemEntity file in files) {
-          if (file is File) {
-            await file.delete();
+      if (path == null) {
+        await setup();
+      }
+      if (path != null) {
+        Directory dir = Directory(path!);
+        if (await dir.exists()) {
+          List<FileSystemEntity> files = dir.listSync();
+          for (FileSystemEntity file in files) {
+            if (file is File) {
+              await file.delete();
+            }
           }
         }
       }
@@ -85,7 +90,7 @@ class BoxxHelper implements BoxxInterface {
   /// Get from local storage
   Future<dynamic> get(String key) async {
     try {
-      dynamic contents = '';
+      dynamic contents;
 
       File file = File(keyPath(key));
       if (await file.exists()) {
@@ -100,12 +105,15 @@ class BoxxHelper implements BoxxInterface {
       return contents;
     } on Exception catch (e) {
       debugPrint(e.toString());
-      return '';
+      return null;
     }
   }
 
   ///Get key path
   String keyPath(String key) {
+    if (path == null) {
+      setup();
+    }
     key = '${sanitizeFilename(key)}.boxx';
     return '$path/$key';
   }

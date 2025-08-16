@@ -95,17 +95,21 @@ class BoxxHelper implements BoxxInterface {
       final store = transaction.objectStore(storeName);
 
       dynamic data = await store.getObject(key);
-      if (mode == EncryptionMode.fernet && encryptionKey != null) {
-        data = fernet.decryptFernet(data, encryptionKey!);
-      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        data = aes.decryptAES(data, encryptionKey!);
+
+      if (data != null) {
+        if (mode == EncryptionMode.fernet && encryptionKey != null) {
+          data = fernet.decryptFernet(data, encryptionKey!);
+        } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+          data = aes.decryptAES(data, encryptionKey!);
+        }
       }
+
       await transaction.completed;
       db.close();
       return data;
     } catch (e) {
       debugPrint(e.toString());
-      //rethrow;
+      return null;
     }
   }
 
