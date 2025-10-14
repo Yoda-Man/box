@@ -22,32 +22,41 @@ class BoxxHelper implements BoxxInterface {
   @override
   EncryptionMode? mode;
 
-  String? path;
+  String? _path;
 
   BoxxHelper({required this.mode, this.encryptionKey}) {
-    setup();
+    _init();
   }
 
   /// Boxx setup for non web
-  Future<void> setup() async {
+  Future<void> _init() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      path = directory.path;
+      _path = directory.path;
     } on Exception catch (e) {
       debugPrint(e.toString());
     }
+  }
+
+  /// Ensure the path is initialized before use
+  Future<String?> get _storagePath async {
+    if (_path == null) {
+      await _init();
+    }
+    return _path;
   }
 
   @override
   /// Delete from local storage
   Future<void> delete(String key) async {
     try {
-      File file = File(keyPath(key));
+      await _storagePath;
+      File file = File(_keyPath(key));
       if (await file.exists()) {
         file.delete();
       }
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('Delete error: $e\n$st');
     }
   }
 
@@ -55,10 +64,11 @@ class BoxxHelper implements BoxxInterface {
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
     try {
-      File file = File(keyPath(key));
+      await _storagePath;
+      File file = File(_keyPath(key));
       return await file.exists();
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('Exists check error: $e\n$st');
       return false;
     }
   }
@@ -67,11 +77,10 @@ class BoxxHelper implements BoxxInterface {
   /// Clear all data from local storage
   Future<void> clear() async {
     try {
-      if (path == null) {
-        await setup();
-      }
-      if (path != null) {
-        Directory dir = Directory(path!);
+      await _storagePath;
+
+      if (_path != null) {
+        Directory dir = Directory(_path!);
         if (await dir.exists()) {
           List<FileSystemEntity> files = dir.listSync();
           for (FileSystemEntity file in files) {
@@ -81,8 +90,8 @@ class BoxxHelper implements BoxxInterface {
           }
         }
       }
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('Clear storage error: $e\n$st');
     }
   }
 
@@ -91,8 +100,8 @@ class BoxxHelper implements BoxxInterface {
   Future<dynamic> get(String key) async {
     try {
       dynamic contents;
-
-      File file = File(keyPath(key));
+      await _storagePath;
+      File file = File(_keyPath(key));
       if (await file.exists()) {
         contents = await file.readAsString();
         if (mode == EncryptionMode.fernet && encryptionKey != null) {
@@ -103,36 +112,36 @@ class BoxxHelper implements BoxxInterface {
       }
 
       return contents;
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('Get error: $e\n$st');
       return null;
     }
   }
 
   ///Get key path
-  String keyPath(String key) {
-    if (path == null) {
-      setup();
-    }
+  String _keyPath(String key) {
     key = '${sanitizeFilename(key)}.boxx';
-    return '$path/$key';
+    return '$_path/$key';
   }
 
   @override
   /// Save to local storage
   Future<void> put(String key, dynamic value) async {
     try {
+      await _storagePath;
       if (mode == EncryptionMode.fernet && encryptionKey != null) {
         File(
-          keyPath(key),
+          _keyPath(key),
         ).writeAsString(fernet.encryptFernet(value, encryptionKey!));
       } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        File(keyPath(key)).writeAsString(aes.encryptAES(value, encryptionKey!));
+        File(
+          _keyPath(key),
+        ).writeAsString(aes.encryptAES(value, encryptionKey!));
       } else {
-        File(keyPath(key)).writeAsString(value);
+        File(_keyPath(key)).writeAsString(value);
       }
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('Put error: $e\n$st');
     }
   }
 }
