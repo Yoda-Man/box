@@ -1,6 +1,6 @@
 name: boxx
 description: Boxx is your ultimate key-value storage plugin with built-in encryption
-version: 0.1.6
+version: 0.1.7
 homepage: https://github.com/Yoda-Man/box
 
 platforms:
