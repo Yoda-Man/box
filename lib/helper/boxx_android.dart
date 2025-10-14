@@ -11,16 +11,16 @@ import 'boxx_interface.dart';
 /// Boxx helper for none web
 class BoxxHelper implements BoxxInterface {
   @override
-  EncryptAES aes = EncryptAES();
+  final EncryptAES aes = EncryptAES();
 
   @override
-  String? encryptionKey;
+  final EncryptFernet fernet = EncryptFernet();
 
   @override
-  EncryptFernet fernet = EncryptFernet();
+  final EncryptionMode? mode;
 
   @override
-  EncryptionMode? mode;
+  final String? encryptionKey;
 
   String? _path;
 
@@ -33,8 +33,8 @@ class BoxxHelper implements BoxxInterface {
     try {
       final directory = await getApplicationDocumentsDirectory();
       _path = directory.path;
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('BoxxHelper setup error: $e\n$st');
     }
   }
 

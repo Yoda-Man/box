@@ -1,51 +1,53 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:idb_shim/idb_browser.dart';
+
 import '../src/encryption.dart';
 import '../boxx.dart';
 import 'boxx_interface.dart';
 
-/// Boxx helper for web
+/// Boxx helper for web platform
 class BoxxHelper implements BoxxInterface {
   @override
-  EncryptAES aes = EncryptAES();
+  final EncryptAES aes = EncryptAES();
 
   @override
-  String? encryptionKey;
+  final EncryptFernet fernet = EncryptFernet();
 
   @override
-  EncryptFernet fernet = EncryptFernet();
+  final EncryptionMode? mode;
 
   @override
-  EncryptionMode? mode;
+  final String? encryptionKey;
 
-  static const storeName = 'boxx';
-  static const dbName = 'boxx';
+  static const String storeName = 'boxx';
+  static const String dbName = 'boxx';
 
-  /// Boxx setup for web
+  Database? _db;
+
   BoxxHelper({required this.mode, this.encryptionKey}) {
-    try {
-      _initDB();
-    } on Exception catch (e) {
-      debugPrint(e.toString());
-    }
+    _initDB().catchError((e, st) {
+      debugPrint('BoxxHelper setup error: $e\n$st');
+    });
   }
 
+  /// Boxx setup for web
   Future<Database> _initDB() async {
-    // Open the database (creates it if it doesn't exist)
+    if (_db != null) return _db!;
     final factory = getIdbFactory();
-    final db = await factory!.open(
+    if (factory == null) throw StateError('IndexedDB factory is null');
+
+    _db = await factory.open(
       dbName,
       version: 1,
-      onUpgradeNeeded: (VersionChangeEvent e) {
-        // Create object stores (tables) if they don't exist
+      onUpgradeNeeded: (e) {
         final db = (e.target as OpenDBRequest).result;
         if (!db.objectStoreNames.contains(storeName)) {
           db.createObjectStore(storeName, keyPath: 'id');
         }
       },
     );
-    return db;
+    return _db!;
   }
 
   @override
@@ -53,15 +55,11 @@ class BoxxHelper implements BoxxInterface {
   Future<void> delete(String key) async {
     try {
       final db = await _initDB();
-      final transaction = db.transaction(storeName, 'readwrite');
-      final store = transaction.objectStore(storeName);
-
-      await store.delete(key);
-      await transaction.completed;
-      db.close();
-    } catch (e) {
-      debugPrint(e.toString());
-      //rethrow;
+      final txn = db.transaction(storeName, idbModeReadWrite);
+      await txn.objectStore(storeName).delete(key);
+      await txn.completed;
+    } catch (e, st) {
+      debugPrint('Delete error: $e\n$st');
     }
   }
 
@@ -70,18 +68,12 @@ class BoxxHelper implements BoxxInterface {
   Future<bool> exists(String key) async {
     try {
       final db = await _initDB();
-      final transaction = db.transaction(storeName, 'readonly');
-      final store = transaction.objectStore(storeName);
-
-      final data = await store.getObject(key);
-
-      if (data == null) {
-        return false;
-      } else {
-        return true;
-      }
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+      final txn = db.transaction(storeName, idbModeReadOnly);
+      final value = await txn.objectStore(storeName).getObject(key);
+      await txn.completed;
+      return value != null;
+    } catch (e, st) {
+      debugPrint('Exists check error: $e\n$st');
       return false;
     }
   }
@@ -91,24 +83,25 @@ class BoxxHelper implements BoxxInterface {
   Future<dynamic> get(String key) async {
     try {
       final db = await _initDB();
-      final transaction = db.transaction(storeName, 'readonly');
-      final store = transaction.objectStore(storeName);
+      final txn = db.transaction(storeName, idbModeReadOnly);
+      dynamic data = await txn.objectStore(storeName).getObject(key);
+      await txn.completed;
 
-      dynamic data = await store.getObject(key);
-
-      if (data != null) {
-        if (mode == EncryptionMode.fernet && encryptionKey != null) {
-          data = fernet.decryptFernet(data, encryptionKey!);
-        } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-          data = aes.decryptAES(data, encryptionKey!);
+      if (data != null && encryptionKey != null && mode != null) {
+        switch (mode!) {
+          case EncryptionMode.fernet:
+            data = fernet.decryptFernet(data, encryptionKey!);
+            break;
+          case EncryptionMode.aes:
+            data = aes.decryptAES(data, encryptionKey!);
+            break;
+          default:
+            break;
         }
       }
-
-      await transaction.completed;
-      db.close();
       return data;
-    } catch (e) {
-      debugPrint(e.toString());
+    } catch (e, st) {
+      debugPrint('Get error: $e\n$st');
       return null;
     }
   }
@@ -118,35 +111,44 @@ class BoxxHelper implements BoxxInterface {
   Future<void> clear() async {
     try {
       final db = await _initDB();
-      final transaction = db.transaction(storeName, 'readwrite');
-      final store = transaction.objectStore(storeName);
-      store.clear();
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+      final txn = db.transaction(storeName, idbModeReadWrite);
+      await txn.objectStore(storeName).clear();
+      await txn.completed;
+    } catch (e, st) {
+      debugPrint('Clear storage error: $e\n$st');
     }
   }
 
   @override
   /// Save to local storage
-  Future<void> put(String key, value) async {
+  Future<void> put(String key, dynamic value) async {
     try {
       final db = await _initDB();
-      final transaction = db.transaction(storeName, 'readwrite');
-      final store = transaction.objectStore(storeName);
+      final txn = db.transaction(storeName, idbModeReadWrite);
+      String dataToStore;
 
-      if (mode == EncryptionMode.fernet && encryptionKey != null) {
-        await store.put(fernet.encryptFernet(value, encryptionKey!), key);
-      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        await store.put(aes.encryptAES(value, encryptionKey!), key);
+      if (encryptionKey != null && mode != null) {
+        switch (mode!) {
+          case EncryptionMode.fernet:
+            dataToStore = fernet.encryptFernet(
+              value.toString(),
+              encryptionKey!,
+            );
+            break;
+          case EncryptionMode.aes:
+            dataToStore = aes.encryptAES(value.toString(), encryptionKey!);
+            break;
+          default:
+            dataToStore = value.toString();
+        }
       } else {
-        await store.put(value, key);
+        dataToStore = value.toString();
       }
 
-      await transaction.completed;
-      db.close();
-    } catch (e) {
-      debugPrint(e.toString());
-      //rethrow;
+      await txn.objectStore(storeName).put(dataToStore, key);
+      await txn.completed;
+    } catch (e, st) {
+      debugPrint('Put error: $e\n$st');
     }
   }
 }

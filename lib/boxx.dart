@@ -1,14 +1,14 @@
 import 'helper/boxx_factory.dart';
 import 'helper/boxx_interface.dart';
 
-/// Enctryption Modes
+/// Encryption Modes
 /// Modes are placed in this file to make it easier to implement
 enum EncryptionMode { aes, fernet, none }
 
 /// Class to handle all local storage
 class Boxx {
-  EncryptionMode? mode;
-  String? encryptionKey;
+  final EncryptionMode? mode;
+  final String? encryptionKey;
   late final BoxxInterface _platform;
 
   /// Constructor for Boxx
@@ -26,33 +26,33 @@ class Boxx {
   /// This will save the value to the local storage with the key
   /// If the key already exists, it will overwrite the value
   Future<void> put(String key, dynamic value) async {
-    _platform.put(key, value);
+    await _platform.put(key, value);
   }
 
   /// Delete from local storage
   /// This will delete the value from the local storage with the key
   /// If the key does not exist, it will do nothing
   Future<void> delete(String key) async {
-    _platform.delete(key);
+    await _platform.delete(key);
   }
 
   /// Check if a key exists in local storage
   /// This will return true if the key exists, false otherwise
   Future<bool> exists(String key) async {
-    return _platform.exists(key);
+    return await _platform.exists(key);
   }
 
   /// Get from local storage
   /// This will return the value stored in the local storage with the key
   /// If the key does not exist, it will return null
   Future<dynamic> get(String key) async {
-    return _platform.get(key);
+    return await _platform.get(key);
   }
 
   /// Clear all data from local storage
   /// This will delete all data stored in the local storage
   Future<void> clear() async {
-    _platform.clear();
+    await _platform.clear();
   }
 
   /// Encrypt data using AES/Fernet
