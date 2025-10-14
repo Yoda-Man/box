@@ -1,3 +1,7 @@
+## 0.1.7
+
+Enhanced error diagnostics with comprehensive stack trace capture.
+
 ## 0.1.6
 
 Breaking changes to make package easier and simpler to use. Added unit tests.

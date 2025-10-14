@@ -126,7 +126,6 @@ debugPrint(decrypted); // Output: Hello World
 
 Alternatively, for a more concise version:
 
-```markdown
 ## 💡 Best Practices
 
 | Practice | Description | Example |
@@ -146,4 +145,4 @@ This project is licensed under the MIT License.
 <div align="center">
 Made with ❤️ for the Flutter community
 
-</div> ```
+</div>

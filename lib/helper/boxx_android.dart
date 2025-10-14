@@ -11,16 +11,16 @@ import 'boxx_interface.dart';
 /// Boxx helper for none web
 class BoxxHelper implements BoxxInterface {
   @override
-  EncryptAES aes = EncryptAES();
+  final EncryptAES aes = EncryptAES();
 
   @override
-  String? encryptionKey;
+  final EncryptFernet fernet = EncryptFernet();
 
   @override
-  EncryptFernet fernet = EncryptFernet();
+  final EncryptionMode? mode;
 
   @override
-  EncryptionMode? mode;
+  final String? encryptionKey;
 
   String? _path;
 
@@ -33,8 +33,8 @@ class BoxxHelper implements BoxxInterface {
     try {
       final directory = await getApplicationDocumentsDirectory();
       _path = directory.path;
-    } on Exception catch (e) {
-      debugPrint(e.toString());
+    } on Exception catch (e, st) {
+      debugPrint('BoxxHelper setup error: $e\n$st');
     }
   }
 
@@ -50,7 +50,9 @@ class BoxxHelper implements BoxxInterface {
   /// Delete from local storage
   Future<void> delete(String key) async {
     try {
-      await _storagePath;
+      final path = await _storagePath;
+      if (path == null) return;
+
       File file = File(_keyPath(key));
       if (await file.exists()) {
         file.delete();
@@ -64,7 +66,9 @@ class BoxxHelper implements BoxxInterface {
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
     try {
-      await _storagePath;
+      final path = await _storagePath;
+      if (path == null) return false;
+
       File file = File(_keyPath(key));
       return await file.exists();
     } on Exception catch (e, st) {
@@ -77,16 +81,15 @@ class BoxxHelper implements BoxxInterface {
   /// Clear all data from local storage
   Future<void> clear() async {
     try {
-      await _storagePath;
+      final path = await _storagePath;
+      if (path == null) return;
 
-      if (_path != null) {
-        Directory dir = Directory(_path!);
-        if (await dir.exists()) {
-          List<FileSystemEntity> files = dir.listSync();
-          for (FileSystemEntity file in files) {
-            if (file is File) {
-              await file.delete();
-            }
+      Directory dir = Directory(_path!);
+      if (await dir.exists()) {
+        List<FileSystemEntity> files = dir.listSync();
+        for (FileSystemEntity file in files) {
+          if (file is File) {
+            await file.delete();
           }
         }
       }
@@ -100,7 +103,9 @@ class BoxxHelper implements BoxxInterface {
   Future<dynamic> get(String key) async {
     try {
       dynamic contents;
-      await _storagePath;
+      final path = await _storagePath;
+      if (path == null) return null;
+
       File file = File(_keyPath(key));
       if (await file.exists()) {
         contents = await file.readAsString();
@@ -128,17 +133,19 @@ class BoxxHelper implements BoxxInterface {
   /// Save to local storage
   Future<void> put(String key, dynamic value) async {
     try {
-      await _storagePath;
+      final path = await _storagePath;
+      if (path == null) return;
+
       if (mode == EncryptionMode.fernet && encryptionKey != null) {
         File(
           _keyPath(key),
-        ).writeAsString(fernet.encryptFernet(value, encryptionKey!));
+        ).writeAsString(fernet.encryptFernet(value.toString(), encryptionKey!));
       } else if (mode == EncryptionMode.aes && encryptionKey != null) {
         File(
           _keyPath(key),
-        ).writeAsString(aes.encryptAES(value, encryptionKey!));
+        ).writeAsString(aes.encryptAES(value.toString(), encryptionKey!));
       } else {
-        File(_keyPath(key)).writeAsString(value);
+        File(_keyPath(key)).writeAsString(value.toString());
       }
     } on Exception catch (e, st) {
       debugPrint('Put error: $e\n$st');
