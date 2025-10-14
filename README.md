@@ -31,7 +31,7 @@ Add Boxx to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  boxx: ^1.0.0
+  boxx: ^0.1.7
 
 
 ## Import
