@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../boxx.dart';
@@ -24,131 +23,93 @@ class BoxxHelper implements BoxxInterface {
 
   String? _path;
 
-  BoxxHelper({required this.mode, this.encryptionKey}) {
-    _init();
-  }
+  BoxxHelper({required this.mode, this.encryptionKey});
 
-  /// Boxx setup for non web
-  Future<void> _init() async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      _path = directory.path;
-    } on Exception catch (e, st) {
-      debugPrint('BoxxHelper setup error: $e\n$st');
-    }
+  @override
+  Future<void> initialize() async {
+    final directory = await getApplicationDocumentsDirectory();
+    _path = directory.path;
   }
 
   /// Ensure the path is initialized before use
-  Future<String?> get _storagePath async {
+  Future<String> get _storagePath async {
     if (_path == null) {
-      await _init();
+      await initialize();
     }
-    return _path;
+    return _path!;
   }
 
   @override
   /// Delete from local storage
   Future<void> delete(String key) async {
-    try {
-      final path = await _storagePath;
-      if (path == null) return;
-
-      File file = File(_keyPath(key));
-      if (await file.exists()) {
-        file.delete();
-      }
-    } on Exception catch (e, st) {
-      debugPrint('Delete error: $e\n$st');
+    final path = await _storagePath;
+    File file = File(_keyPath(path, key));
+    if (await file.exists()) {
+      await file.delete();
     }
   }
 
   @override
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
-    try {
-      final path = await _storagePath;
-      if (path == null) return false;
-
-      File file = File(_keyPath(key));
-      return await file.exists();
-    } on Exception catch (e, st) {
-      debugPrint('Exists check error: $e\n$st');
-      return false;
-    }
+    final path = await _storagePath;
+    File file = File(_keyPath(path, key));
+    return await file.exists();
   }
 
   @override
   /// Clear all data from local storage
   Future<void> clear() async {
-    try {
-      final path = await _storagePath;
-      if (path == null) return;
-
-      Directory dir = Directory(_path!);
-      if (await dir.exists()) {
-        List<FileSystemEntity> files = dir.listSync();
-        for (FileSystemEntity file in files) {
-          if (file is File) {
-            await file.delete();
-          }
+    final path = await _storagePath;
+    Directory dir = Directory(path);
+    if (await dir.exists()) {
+      List<FileSystemEntity> files = dir.listSync();
+      for (FileSystemEntity file in files) {
+        if (file is File && file.path.endsWith('.boxx')) {
+          await file.delete();
         }
       }
-    } on Exception catch (e, st) {
-      debugPrint('Clear storage error: $e\n$st');
     }
   }
 
   @override
   /// Get from local storage
   Future<dynamic> get(String key) async {
-    try {
-      dynamic contents;
-      final path = await _storagePath;
-      if (path == null) return null;
+    final path = await _storagePath;
+    File file = File(_keyPath(path, key));
 
-      File file = File(_keyPath(key));
-      if (await file.exists()) {
-        contents = await file.readAsString();
-        if (mode == EncryptionMode.fernet && encryptionKey != null) {
-          contents = fernet.decryptFernet(contents, encryptionKey!);
-        } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-          contents = aes.decryptAES(contents, encryptionKey!);
-        }
+    if (await file.exists()) {
+      String contents = await file.readAsString();
+      if (mode == EncryptionMode.fernet && encryptionKey != null) {
+        return fernet.decryptFernet(contents, encryptionKey!);
+      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+        return aes.decryptAES(contents, encryptionKey!);
       }
-
       return contents;
-    } on Exception catch (e, st) {
-      debugPrint('Get error: $e\n$st');
-      return null;
     }
+    return null;
   }
 
   ///Get key path
-  String _keyPath(String key) {
+  String _keyPath(String basePath, String key) {
     key = '${sanitizeFilename(key)}.boxx';
-    return '$_path/$key';
+    return '$basePath/$key';
   }
 
   @override
   /// Save to local storage
   Future<void> put(String key, dynamic value) async {
-    try {
-      final path = await _storagePath;
-      if (path == null) return;
+    final path = await _storagePath;
+    final file = File(_keyPath(path, key));
 
-      if (mode == EncryptionMode.fernet && encryptionKey != null) {
-        File(
-          _keyPath(key),
-        ).writeAsString(fernet.encryptFernet(value.toString(), encryptionKey!));
-      } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        File(
-          _keyPath(key),
-        ).writeAsString(aes.encryptAES(value.toString(), encryptionKey!));
-      } else {
-        File(_keyPath(key)).writeAsString(value.toString());
-      }
-    } on Exception catch (e, st) {
-      debugPrint('Put error: $e\n$st');
+    String dataToStore = value.toString();
+
+    if (mode == EncryptionMode.fernet && encryptionKey != null) {
+      dataToStore = fernet.encryptFernet(dataToStore, encryptionKey!);
+    } else if (mode == EncryptionMode.aes && encryptionKey != null) {
+      dataToStore = aes.encryptAES(dataToStore, encryptionKey!);
     }
+
+    await file.writeAsString(dataToStore);
   }
 }

@@ -7,13 +7,14 @@ late Boxx box;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  initBox();
+  await initBox();
 }
 
 
 
-initBox() {
+Future<void> initBox() async {
   box = Boxx(mode: EncryptionMode.none);
+  await box.initialize();
 }
 
 ```
@@ -31,8 +32,9 @@ Future<void> main() async {
 
 
 
-initBox() {
+Future<void> initBox() async {
   box = Boxx(mode: EncryptionMode.aes,encryptionKey: 'xxxxxxxx');
+  await box.initialize();
 }
 
 ```
@@ -42,7 +44,7 @@ initBox() {
 Delete
 
 ```dart
-    box.delete('UserData');
+    await box.delete('UserData');
 ```
 
 Get
@@ -52,10 +54,10 @@ Get
 
 Put
 ```dart
-box.put('UserData', response.body);
+await box.put('UserData', response.body);
 ```
 
-encrption/decryption
+Encryption/Decryption
 ```dart
   String t1 = box.encrypt('Hello World');
   debugPrint(t1);

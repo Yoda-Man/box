@@ -80,17 +80,17 @@ Future<void> initBox() async {
 
 Delete Data
 ```dart
-    box.delete('UserData');
+await box.delete('UserData');
 ```
 
 Retrieve Data
 ```dart
- final contents = await box.get('UserData');
+final contents = await box.get('UserData');
 ```
 
 Store Data
 ```dart
-box.put('UserData', response.body);
+await box.put('UserData', response.body);
 ```
 
 Encryption Utilities

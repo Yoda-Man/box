@@ -22,6 +22,12 @@ class Boxx {
     );
   }
 
+  /// Initialize the storage
+  /// This must be called before any other operation
+  Future<void> initialize() async {
+    await _platform.initialize();
+  }
+
   /// Save to local storage
   /// This will save the value to the local storage with the key
   /// If the key already exists, it will overwrite the value
