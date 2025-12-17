@@ -1,3 +1,11 @@
+## 0.1.8
+
+* **SECURITY**: Fixed critical Fernet decryption vulnerability.
+* **SECURITY**: Implemented random IV for AES encryption (breaking change for previously encrypted data).
+* **API**: Added `initialize()` method. Initialization is now explicit and async.
+* **Code**: Fixed static state issues for thread safety.
+* **Docs**: Updated documentation and examples.
+
 ## 0.1.7
 
 Enhanced error diagnostics with comprehensive stack trace capture.

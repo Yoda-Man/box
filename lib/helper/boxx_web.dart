@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:idb_shim/idb_browser.dart';
 
 import '../src/encryption.dart';
@@ -25,19 +24,20 @@ class BoxxHelper implements BoxxInterface {
 
   Database? _db;
 
-  BoxxHelper({required this.mode, this.encryptionKey}) {
-    _initDB().catchError((e, st) {
-      debugPrint('BoxxHelper setup error: $e\n$st');
-    });
+  BoxxHelper({required this.mode, this.encryptionKey});
+
+  @override
+  Future<void> initialize() async {
+    if (_db != null) return;
+    _db = await _initDB();
   }
 
   /// Boxx setup for web
   Future<Database> _initDB() async {
-    if (_db != null) return _db!;
     final factory = getIdbFactory();
     if (factory == null) throw StateError('IndexedDB factory is null');
 
-    _db = await factory.open(
+    return await factory.open(
       dbName,
       version: 1,
       onUpgradeNeeded: (e) {
@@ -47,108 +47,77 @@ class BoxxHelper implements BoxxInterface {
         }
       },
     );
+  }
+
+  Future<Database> get _initializedDB async {
+    if (_db == null) {
+      await initialize();
+    }
     return _db!;
   }
 
   @override
   /// Delete from local storage
   Future<void> delete(String key) async {
-    try {
-      final db = await _initDB();
-      final txn = db.transaction(storeName, idbModeReadWrite);
-      await txn.objectStore(storeName).delete(key);
-      await txn.completed;
-    } catch (e, st) {
-      debugPrint('Delete error: $e\n$st');
-    }
+    final db = await _initializedDB;
+    final txn = db.transaction(storeName, idbModeReadWrite);
+    await txn.objectStore(storeName).delete(key);
+    await txn.completed;
   }
 
   @override
   /// Check if key exists in local storage
   Future<bool> exists(String key) async {
-    try {
-      final db = await _initDB();
-      final txn = db.transaction(storeName, idbModeReadOnly);
-      final value = await txn.objectStore(storeName).getObject(key);
-      await txn.completed;
-      return value != null;
-    } catch (e, st) {
-      debugPrint('Exists check error: $e\n$st');
-      return false;
-    }
+    final db = await _initializedDB;
+    final txn = db.transaction(storeName, idbModeReadOnly);
+    final value = await txn.objectStore(storeName).getObject(key);
+    await txn.completed;
+    return value != null;
   }
 
   @override
   /// Get from local storage
   Future<dynamic> get(String key) async {
-    try {
-      final db = await _initDB();
-      final txn = db.transaction(storeName, idbModeReadOnly);
-      dynamic data = await txn.objectStore(storeName).getObject(key);
-      await txn.completed;
+    final db = await _initializedDB;
+    final txn = db.transaction(storeName, idbModeReadOnly);
+    dynamic data = await txn.objectStore(storeName).getObject(key);
+    await txn.completed;
 
-      if (data != null && encryptionKey != null && mode != null) {
-        switch (mode!) {
-          case EncryptionMode.fernet:
-            data = fernet.decryptFernet(data, encryptionKey!);
-            break;
-          case EncryptionMode.aes:
-            data = aes.decryptAES(data, encryptionKey!);
-            break;
-          default:
-            break;
-        }
+    if (data != null && encryptionKey != null && mode != null) {
+      if (mode == EncryptionMode.fernet) {
+        data = fernet.decryptFernet(data, encryptionKey!);
+      } else if (mode == EncryptionMode.aes) {
+        data = aes.decryptAES(data, encryptionKey!);
       }
-      return data;
-    } catch (e, st) {
-      debugPrint('Get error: $e\n$st');
-      return null;
     }
+    return data;
   }
 
   @override
   /// Clear all data from local storage
   Future<void> clear() async {
-    try {
-      final db = await _initDB();
-      final txn = db.transaction(storeName, idbModeReadWrite);
-      await txn.objectStore(storeName).clear();
-      await txn.completed;
-    } catch (e, st) {
-      debugPrint('Clear storage error: $e\n$st');
-    }
+    final db = await _initializedDB;
+    final txn = db.transaction(storeName, idbModeReadWrite);
+    await txn.objectStore(storeName).clear();
+    await txn.completed;
   }
 
   @override
   /// Save to local storage
   Future<void> put(String key, dynamic value) async {
-    try {
-      final db = await _initDB();
-      final txn = db.transaction(storeName, idbModeReadWrite);
-      String dataToStore;
+    final db = await _initializedDB;
+    final txn = db.transaction(storeName, idbModeReadWrite);
+    String dataToStore = value.toString();
 
-      if (encryptionKey != null && mode != null) {
-        switch (mode!) {
-          case EncryptionMode.fernet:
-            dataToStore = fernet.encryptFernet(
-              value.toString(),
-              encryptionKey!,
-            );
-            break;
-          case EncryptionMode.aes:
-            dataToStore = aes.encryptAES(value.toString(), encryptionKey!);
-            break;
-          default:
-            dataToStore = value.toString();
-        }
-      } else {
-        dataToStore = value.toString();
+    if (encryptionKey != null && mode != null) {
+      if (mode == EncryptionMode.fernet) {
+        dataToStore = fernet.encryptFernet(dataToStore, encryptionKey!);
+      } else if (mode == EncryptionMode.aes) {
+        dataToStore = aes.encryptAES(dataToStore, encryptionKey!);
       }
-
-      await txn.objectStore(storeName).put(dataToStore, key);
-      await txn.completed;
-    } catch (e, st) {
-      debugPrint('Put error: $e\n$st');
     }
+
+    await txn.objectStore(storeName).put(dataToStore, key);
+    await txn.completed;
   }
 }

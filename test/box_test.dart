@@ -1,112 +1,186 @@
 import 'package:boxx/boxx.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  test('Fast Storage Tests', () async {
-    final boxx = Boxx(mode: EncryptionMode.none);
-    expect(boxx.put('2', '2'), '');
-    expect(boxx.get('2'), '2');
-    expect(boxx.delete('2'), '');
-    expect(boxx.get('2'), null);
+
+  const MethodChannel channel = MethodChannel(
+    'plugins.flutter.io/path_provider',
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+        return '.';
+      });
+
+  group('Boxx Storage Tests', () {
+    test('Fast Storage Tests', () async {
+      final boxx = Boxx(mode: EncryptionMode.none);
+      await boxx.initialize();
+
+      await boxx.put('2', '2');
+      expect(await boxx.get('2'), '2');
+
+      await boxx.delete('2');
+      expect(await boxx.get('2'), null);
+    });
+
+    test('AES Encryption Storage Tests', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.aes,
+        encryptionKey: 'testpassword',
+      );
+      await boxx.initialize();
+
+      await boxx.put('key', 'value');
+      expect(await boxx.get('key'), 'value');
+
+      await boxx.delete('key');
+      expect(await boxx.get('key'), null);
+    });
+
+    test('Fernet Encryption Storage Tests', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.fernet,
+        encryptionKey: 'ferretpass',
+      );
+      await boxx.initialize();
+
+      await boxx.put('ferretKey', 'ferretValue');
+      expect(await boxx.get('ferretKey'), 'ferretValue');
+
+      await boxx.delete('ferretKey');
+    });
+
+    test('String Encryption/Decryption Tests - AES', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.aes,
+        encryptionKey: 'stringkey123',
+      );
+      await boxx.initialize();
+
+      final originalString = 'SensitiveData123!@#';
+      await boxx.put('encKey', originalString);
+
+      final retrieved = await boxx.get('encKey');
+      expect(retrieved, originalString);
+    });
+
+    test('String Encryption/Decryption Tests - Fernet', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.fernet,
+        encryptionKey: 'fernetstringkey',
+      );
+      await boxx.initialize();
+
+      final originalString = 'AnotherSensitiveString456%^';
+      await boxx.put('fernetEncKey', originalString);
+
+      final retrieved = await boxx.get('fernetEncKey');
+      expect(retrieved, originalString);
+    });
+
+    test('Unicode String Encryption Test - AES', () async {
+      final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'unicodekey');
+      await boxx.initialize();
+
+      final unicodeString = 'こんにちは世界🌏';
+      await boxx.put('unicodeKey', unicodeString);
+      expect(await boxx.get('unicodeKey'), unicodeString);
+    });
   });
 
-  test('AES Encryption Storage Tests', () async {
-    final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'testpassword');
-    expect(boxx.put('key', 'value'), '');
-    expect(boxx.get('key'), 'value');
-    expect(boxx.delete('key'), '');
-    expect(boxx.get('key'), null);
-  });
+  group('Boxx Core Encryption Tests', () {
+    test('Boxx.encrypt and Boxx.decrypt - AES', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.aes,
+        encryptionKey: 'aesEncryptKey',
+      );
+      await boxx.initialize();
 
-  test('Ferret Encryption Storage Tests', () async {
-    final boxx = Boxx(mode: EncryptionMode.fernet, encryptionKey: 'ferretpass');
-    expect(boxx.put('ferretKey', 'ferretValue'), '');
-    expect(boxx.get('ferretKey'), 'ferretValue');
-    expect(boxx.delete('ferretKey'), '');
-    expect(boxx.get('ferretKey'), null);
-  });
+      final plainText = 'EncryptThisText123!';
+      final encrypted = boxx.encrypt(plainText);
+      expect(encrypted, isNot(plainText));
+      expect(
+        encrypted.contains(':'),
+        isTrue,
+        reason: 'AES should contain IV separator',
+      );
 
-  test('String Encryption/Decryption Tests - AES', () async {
-    final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'stringkey123');
-    final originalString = 'SensitiveData123!@#';
-    expect(boxx.put('encKey', originalString), '');
-    final retrieved = boxx.get('encKey');
-    expect(retrieved, originalString);
-    expect(boxx.delete('encKey'), '');
-    expect(boxx.get('encKey'), null);
-  });
+      final decrypted = boxx.decrypt(encrypted);
+      expect(decrypted, plainText);
+    });
 
-  test('String Encryption/Decryption Tests - Fernet', () async {
-    final boxx = Boxx(
-      mode: EncryptionMode.fernet,
-      encryptionKey: 'fernetstringkey',
-    );
-    final originalString = 'AnotherSensitiveString456%^';
-    expect(boxx.put('fernetEncKey', originalString), '');
-    final retrieved = boxx.get('fernetEncKey');
-    expect(retrieved, originalString);
-    expect(boxx.delete('fernetEncKey'), '');
-    expect(boxx.get('fernetEncKey'), null);
-  });
+    test('AES Random IV Check', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.aes,
+        encryptionKey: 'aesEncryptKey',
+      );
+      await boxx.initialize();
 
-  test('Empty String Storage Test', () async {
-    final boxx = Boxx(mode: EncryptionMode.none);
-    expect(boxx.put('empty', ''), '');
-    expect(boxx.get('empty'), '');
-    expect(boxx.delete('empty'), '');
-    expect(boxx.get('empty'), null);
-  });
+      final plainText = 'SameText';
+      final encrypted1 = boxx.encrypt(plainText);
+      final encrypted2 = boxx.encrypt(plainText);
 
-  test('Unicode String Encryption Test - AES', () async {
-    final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'unicodekey');
-    final unicodeString = 'こんにちは世界🌏';
-    expect(boxx.put('unicodeKey', unicodeString), '');
-    expect(boxx.get('unicodeKey'), unicodeString);
-    expect(boxx.delete('unicodeKey'), '');
-    expect(boxx.get('unicodeKey'), null);
-  });
-  test('Boxx.encrypt and Boxx.decrypt - AES', () async {
-    final boxx = Boxx(mode: EncryptionMode.aes, encryptionKey: 'aesEncryptKey');
-    final plainText = 'EncryptThisText123!';
-    final encrypted = boxx.encrypt(plainText);
-    expect(encrypted, isNot(plainText));
-    final decrypted = boxx.decrypt(encrypted);
-    expect(decrypted, plainText);
-  });
+      expect(encrypted1, isNot(plainText));
+      expect(
+        encrypted1,
+        isNot(encrypted2),
+        reason: 'AES encryption should be non-deterministic (random IV)',
+      );
 
-  test('Boxx.encrypt and Boxx.decrypt - Fernet', () async {
-    final boxx = Boxx(
-      mode: EncryptionMode.fernet,
-      encryptionKey: 'fernetEncryptKey',
-    );
-    final plainText = 'FernetEncryptionTest456@#';
-    final encrypted = boxx.encrypt(plainText);
-    expect(encrypted, isNot(plainText));
-    final decrypted = boxx.decrypt(encrypted);
-    expect(decrypted, plainText);
-  });
+      // Both should decrypt to same text
+      expect(boxx.decrypt(encrypted1), plainText);
+      expect(boxx.decrypt(encrypted2), plainText);
+    });
 
-  test('Boxx.encrypt and Boxx.decrypt - Unicode String', () async {
-    final boxx = Boxx(
-      mode: EncryptionMode.aes,
-      encryptionKey: 'unicodeEncryptKey',
-    );
-    final unicodeText = 'テスト🌟🚀';
-    final encrypted = boxx.encrypt(unicodeText);
-    expect(encrypted, isNot(unicodeText));
-    final decrypted = boxx.decrypt(encrypted);
-    expect(decrypted, unicodeText);
-  });
+    test('Boxx.encrypt and Boxx.decrypt - Fernet', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.fernet,
+        encryptionKey: 'fernetEncryptKey',
+      );
+      await boxx.initialize();
 
-  test('Boxx.encrypt and Boxx.decrypt - Empty String', () async {
-    final boxx = Boxx(
-      mode: EncryptionMode.aes,
-      encryptionKey: 'emptyEncryptKey',
-    );
-    final encrypted = boxx.encrypt('');
-    expect(encrypted, isNotNull);
-    final decrypted = boxx.decrypt(encrypted);
-    expect(decrypted, '');
+      final plainText = 'FernetEncryptionTest456@#';
+      final encrypted = boxx.encrypt(plainText);
+      expect(encrypted, isNot(plainText));
+
+      final decrypted = boxx.decrypt(encrypted);
+      expect(decrypted, plainText);
+    });
+
+    test('Fernet Randomness Check', () async {
+      // Fernet also includes randomness (IV/timestamp)
+      final boxx = Boxx(
+        mode: EncryptionMode.fernet,
+        encryptionKey: 'fernetEncryptKey',
+      );
+      await boxx.initialize();
+
+      final plainText = 'SameText';
+      final encrypted1 = boxx.encrypt(plainText);
+      final encrypted2 = boxx.encrypt(plainText);
+
+      expect(
+        encrypted1,
+        isNot(encrypted2),
+        reason: 'Fernet encryption should be non-deterministic',
+      );
+      expect(boxx.decrypt(encrypted1), plainText);
+      expect(boxx.decrypt(encrypted2), plainText);
+    });
+
+    test('Boxx.encrypt and Boxx.decrypt - Unicode String', () async {
+      final boxx = Boxx(
+        mode: EncryptionMode.aes,
+        encryptionKey: 'unicodeEncryptKey',
+      );
+      await boxx.initialize();
+
+      final unicodeText = 'テスト🌟🚀';
+      final encrypted = boxx.encrypt(unicodeText);
+      final decrypted = boxx.decrypt(encrypted);
+      expect(decrypted, unicodeText);
+    });
   });
 }

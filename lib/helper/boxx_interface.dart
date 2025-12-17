@@ -12,6 +12,7 @@ abstract class BoxxInterface {
 
   BoxxInterface({required this.mode, this.encryptionKey});
 
+  Future<void> initialize();
   Future<void> put(String key, dynamic value);
   Future<void> delete(String key);
   Future<bool> exists(String key);
