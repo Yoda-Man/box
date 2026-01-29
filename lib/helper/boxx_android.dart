@@ -1,29 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
 import '../boxx.dart';
-import '../src/encryption.dart';
 import '../src/sanitize_filename.dart';
 import 'boxx_interface.dart';
 
 /// Boxx helper for none web
-class BoxxHelper implements BoxxInterface {
-  @override
-  final EncryptAES aes = EncryptAES();
-
-  @override
-  final EncryptFernet fernet = EncryptFernet();
-
-  @override
-  final EncryptionMode? mode;
-
-  @override
-  final String? encryptionKey;
+class BoxxHelper extends BoxxInterface {
+  BoxxHelper({required super.mode, super.encryptionKey});
 
   String? _path;
-
-  BoxxHelper({required this.mode, this.encryptionKey});
 
   @override
   Future<void> initialize() async {
@@ -46,6 +34,7 @@ class BoxxHelper implements BoxxInterface {
     File file = File(_keyPath(path, key));
     if (await file.exists()) {
       await file.delete();
+      notifyListeners(key);
     }
   }
 
@@ -69,6 +58,7 @@ class BoxxHelper implements BoxxInterface {
           await file.delete();
         }
       }
+      notifyListeners('*');
     }
   }
 
@@ -81,11 +71,16 @@ class BoxxHelper implements BoxxInterface {
     if (await file.exists()) {
       String contents = await file.readAsString();
       if (mode == EncryptionMode.fernet && encryptionKey != null) {
-        return fernet.decryptFernet(contents, encryptionKey!);
+        contents = fernet.decryptFernet(contents, encryptionKey!);
       } else if (mode == EncryptionMode.aes && encryptionKey != null) {
-        return aes.decryptAES(contents, encryptionKey!);
+        contents = aes.decryptAES(contents, encryptionKey!);
       }
-      return contents;
+
+      try {
+        return jsonDecode(contents);
+      } catch (_) {
+        return contents;
+      }
     }
     return null;
   }
@@ -102,7 +97,9 @@ class BoxxHelper implements BoxxInterface {
     final path = await _storagePath;
     final file = File(_keyPath(path, key));
 
-    String dataToStore = value.toString();
+    String dataToStore = (value is String || value is num || value is bool)
+        ? value.toString()
+        : jsonEncode(value);
 
     if (mode == EncryptionMode.fernet && encryptionKey != null) {
       dataToStore = fernet.encryptFernet(dataToStore, encryptionKey!);
@@ -111,5 +108,32 @@ class BoxxHelper implements BoxxInterface {
     }
 
     await file.writeAsString(dataToStore);
+    notifyListeners(key);
+  }
+
+  @override
+  Future<List<String>> getKeys() async {
+    final path = await _storagePath;
+    Directory dir = Directory(path);
+    if (await dir.exists()) {
+      return dir
+          .listSync()
+          .where((e) => e is File && e.path.endsWith('.boxx'))
+          .map(
+            (e) => File(e.path).uri.pathSegments.last.replaceFirst('.boxx', ''),
+          )
+          .toList();
+    }
+    return [];
+  }
+
+  @override
+  Future<List<dynamic>> getValues() async {
+    final keys = await getKeys();
+    final values = <dynamic>[];
+    for (final key in keys) {
+      values.add(await get(key));
+    }
+    return values;
   }
 }

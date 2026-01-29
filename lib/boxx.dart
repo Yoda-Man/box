@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'helper/boxx_factory.dart';
 import 'helper/boxx_interface.dart';
 
@@ -11,6 +12,9 @@ class Boxx {
   final String? encryptionKey;
   late final BoxxInterface _platform;
 
+  /// Cache to speed up read operations
+  final Map<String, dynamic> _cache = {};
+
   /// Constructor for Boxx
   /// This will initialize the BoxxInterface based on the platform and encryption mode
   /// It uses the BoxxFactory to get the correct implementation for the current platform
@@ -20,6 +24,15 @@ class Boxx {
       mode: mode,
       encryptionKey: encryptionKey,
     );
+
+    // Sync cache on changes
+    _platform.onChange.listen((key) {
+      if (key == '*') {
+        _cache.clear();
+      } else {
+        _cache.remove(key);
+      }
+    });
   }
 
   /// Initialize the storage
@@ -33,6 +46,7 @@ class Boxx {
   /// If the key already exists, it will overwrite the value
   Future<void> put(String key, dynamic value) async {
     await _platform.put(key, value);
+    _cache[key] = value;
   }
 
   /// Delete from local storage
@@ -40,25 +54,62 @@ class Boxx {
   /// If the key does not exist, it will do nothing
   Future<void> delete(String key) async {
     await _platform.delete(key);
+    _cache.remove(key);
   }
 
   /// Check if a key exists in local storage
   /// This will return true if the key exists, false otherwise
   Future<bool> exists(String key) async {
+    if (_cache.containsKey(key)) return true;
     return await _platform.exists(key);
   }
 
   /// Get from local storage
   /// This will return the value stored in the local storage with the key
   /// If the key does not exist, it will return null
-  Future<dynamic> get(String key) async {
-    return await _platform.get(key);
+  /// You can specify a generic type T to get a casted result
+  Future<T?> get<T>(String key) async {
+    if (_cache.containsKey(key)) {
+      return _cache[key] as T?;
+    }
+    final value = await _platform.get(key);
+    if (value != null) {
+      _cache[key] = value;
+    }
+    return value as T?;
   }
 
   /// Clear all data from local storage
   /// This will delete all data stored in the local storage
   Future<void> clear() async {
     await _platform.clear();
+    _cache.clear();
+  }
+
+  /// Get all keys
+  Future<List<String>> get keys => _platform.getKeys();
+
+  /// Get all values
+  Future<List<dynamic>> get values => _platform.getValues();
+
+  /// Get all entries as a Map
+  Future<Map<String, dynamic>> all() async {
+    final k = await keys;
+    final m = <String, dynamic>{};
+    for (final key in k) {
+      m[key] = await get(key);
+    }
+    return m;
+  }
+
+  /// Watch for changes to a specific key
+  /// Returns a stream of the value associated with the key
+  /// This will emit the current value immediately upon subscription
+  Stream<T?> watch<T>(String key) async* {
+    yield await get<T>(key);
+    yield* _platform.onChange
+        .where((k) => k == key || k == '*')
+        .asyncMap((_) => get<T>(key));
   }
 
   /// Encrypt data using AES/Fernet
@@ -97,5 +148,10 @@ class Boxx {
         'Encryption mode is not set to AES/Fernet or encryption key is null',
       );
     }
+  }
+
+  /// Close the storage and internal resources
+  void dispose() {
+    _platform.dispose();
   }
 }

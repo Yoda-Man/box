@@ -1,3 +1,12 @@
+## 0.2.0
+
+*   **NEW**: Added type-safe generics to `get<T>()` and `put<T>()`.
+*   **NEW**: Added reactivity with `watch(key)` returning a `Stream`.
+*   **NEW**: Added support for JSON serialization of Maps and Lists automatically.
+*   **NEW**: Added `keys`, `values`, and `all()` methods to explore storage.
+*   **IMPROVEMENT**: Enhanced memory caching for faster read operations.
+*   **API**: Cleaned up internal architecture for better maintainability.
+
 ## 0.1.8
 
 * **SECURITY**: Fixed critical Fernet decryption vulnerability.

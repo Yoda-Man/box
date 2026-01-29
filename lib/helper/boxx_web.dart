@@ -1,30 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:idb_shim/idb_browser.dart';
 
-import '../src/encryption.dart';
 import '../boxx.dart';
 import 'boxx_interface.dart';
 
 /// Boxx helper for web platform
-class BoxxHelper implements BoxxInterface {
-  @override
-  final EncryptAES aes = EncryptAES();
-
-  @override
-  final EncryptFernet fernet = EncryptFernet();
-
-  @override
-  final EncryptionMode? mode;
-
-  @override
-  final String? encryptionKey;
+class BoxxHelper extends BoxxInterface {
+  BoxxHelper({required super.mode, super.encryptionKey});
 
   static const String storeName = 'boxx';
   static const String dbName = 'boxx';
 
   Database? _db;
-
-  BoxxHelper({required this.mode, this.encryptionKey});
 
   @override
   Future<void> initialize() async {
@@ -63,6 +51,7 @@ class BoxxHelper implements BoxxInterface {
     final txn = db.transaction(storeName, idbModeReadWrite);
     await txn.objectStore(storeName).delete(key);
     await txn.completed;
+    notifyListeners(key);
   }
 
   @override
@@ -83,11 +72,19 @@ class BoxxHelper implements BoxxInterface {
     dynamic data = await txn.objectStore(storeName).getObject(key);
     await txn.completed;
 
-    if (data != null && encryptionKey != null && mode != null) {
-      if (mode == EncryptionMode.fernet) {
-        data = fernet.decryptFernet(data, encryptionKey!);
-      } else if (mode == EncryptionMode.aes) {
-        data = aes.decryptAES(data, encryptionKey!);
+    if (data != null) {
+      if (encryptionKey != null && mode != null) {
+        if (mode == EncryptionMode.fernet) {
+          data = fernet.decryptFernet(data, encryptionKey!);
+        } else if (mode == EncryptionMode.aes) {
+          data = aes.decryptAES(data, encryptionKey!);
+        }
+      }
+
+      try {
+        return jsonDecode(data);
+      } catch (_) {
+        return data;
       }
     }
     return data;
@@ -100,6 +97,7 @@ class BoxxHelper implements BoxxInterface {
     final txn = db.transaction(storeName, idbModeReadWrite);
     await txn.objectStore(storeName).clear();
     await txn.completed;
+    notifyListeners('*');
   }
 
   @override
@@ -107,7 +105,9 @@ class BoxxHelper implements BoxxInterface {
   Future<void> put(String key, dynamic value) async {
     final db = await _initializedDB;
     final txn = db.transaction(storeName, idbModeReadWrite);
-    String dataToStore = value.toString();
+    String dataToStore = (value is String || value is num || value is bool)
+        ? value.toString()
+        : jsonEncode(value);
 
     if (encryptionKey != null && mode != null) {
       if (mode == EncryptionMode.fernet) {
@@ -119,5 +119,25 @@ class BoxxHelper implements BoxxInterface {
 
     await txn.objectStore(storeName).put(dataToStore, key);
     await txn.completed;
+    notifyListeners(key);
+  }
+
+  @override
+  Future<List<String>> getKeys() async {
+    final db = await _initializedDB;
+    final txn = db.transaction(storeName, idbModeReadOnly);
+    final keys = await txn.objectStore(storeName).getAllKeys();
+    await txn.completed;
+    return keys.map((e) => e.toString()).toList();
+  }
+
+  @override
+  Future<List<dynamic>> getValues() async {
+    final keys = await getKeys();
+    final values = <dynamic>[];
+    for (final key in keys) {
+      values.add(await get(key));
+    }
+    return values;
   }
 }

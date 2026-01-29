@@ -4,9 +4,9 @@
 
 <img src="https://www.soundcentral.africa/assets/assets/boxx.jpg" alt="Boxx Logo" width="300">
 
-### Secure • Simple • Fast Flutter Storage
+### Secure • Reactive • Type-Safe Storage for Flutter
 
-**Store, retrieve, and protect your data effortlessly with AES or Fernet encryption**
+**The developer-friendly storage solution with AES/Fernet encryption, generics, and real-time streams.**
 
 [![Pub Version](https://img.shields.io/pub/v/boxx?color=blue&label=pub.dev&logo=dart)](https://pub.dev/packages/boxx)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -14,14 +14,16 @@
 
 </div>
 
-## ✨ Features
+## ✨ Key Features
 
-Boxx is a lightweight storage solution with optional encryption built in. Its simple, powerful, & intuitive API gets you up and running in no time.
+Boxx is built to be the most developer-friendly storage plugin for Flutter. It combines simplicity with powerful modern features.
 
-✅ **Simple** – Easy-to-use key-value interface  
-✅ **Secure** – Choose between AES-256 or Fernet encryption  
-✅ **Fast** – Optimized for performance with minimal overhead  
-✅ **Versatile** – Perfect for configs, secrets, or sensitive data  
+✅ **🛡️ Type-Safe** – Full support for Generics (`get<T>`).  
+✅ **📡 Reactive** – Watch any key for changes with standard Streams.  
+✅ **📦 JSON Ready** – Automatically handle Maps and Lists.  
+✅ **⚡ Blazing Fast** – Built-in memory cache for instant reads.  
+✅ **🔐 Secure** – Military-grade AES-256 or Fernet encryption.  
+✅ **🌐 Universal** – Consistent API across Mobile, Desktop, and Web.
 
 ## 🚀 Getting Started
 
@@ -31,118 +33,95 @@ Add Boxx to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  boxx: ^0.1.7
+  boxx: ^0.2.0
+```
 
+### Quick Start
 
-## Import
 ```dart
 import 'package:boxx/boxx.dart';
 
-```
-## Getting started
-Without Encryption
-```dart
 late Boxx box;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initBox();
-}
-
-Future<void> initBox() async {
-  box = Boxx(mode: EncryptionMode.none);
-  await box.initialize();
-}
-
-```
-
-With Encryption
-
-```dart
-late Boxx box;
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initBox();
-}
-
-Future<void> initBox() async {
+  
+  // Initialize with AES encryption
   box = Boxx(
     mode: EncryptionMode.aes,
     encryptionKey: 'your-32-character-encryption-key',
   );
+  
   await box.initialize();
 }
-
 ```
 
-## Usage
+## 🛠 Usage
 
-Delete Data
+### Basic Operations
 ```dart
-await box.delete('UserData');
+// Store any JSON-serializable data
+await box.put('user_profile', {
+  'name': 'John Doe',
+  'premium': true,
+  'joined': 2024,
+});
+
+// Retrieve with type safety
+final profile = await box.get<Map<String, dynamic>>('user_profile');
+print(profile?['name']); // Output: John Doe
+
+// Delete data
+await box.delete('user_profile');
 ```
 
-Retrieve Data
+### 📡 Reactivity
+Listen to changes in real-time. Perfect for UI updates or state management.
+
 ```dart
-final contents = await box.get('UserData');
+box.watch<bool>('is_logged_in').listen((status) {
+  print('User login status changed to: $status');
+});
 ```
 
-Store Data
+### 🔍 Storage Exploration
 ```dart
-await box.put('UserData', response.body);
+List<String> keys = await box.keys;
+List<dynamic> values = await box.values;
+Map<String, dynamic> allData = await box.all();
 ```
 
-Encryption Utilities
+### 🔐 Manual Encryption
+Useful for encrypting strings before sending over the network or storing elsewhere.
+
 ```dart
-// Encrypt any string
-String encrypted = box.encrypt('Hello World');
-debugPrint(encrypted);
-
-// Decrypt back to original
-String decrypted = box.decrypt(encrypted);
-debugPrint(decrypted); // Output: Hello World
+String secret = box.encrypt('Hello World');
+String original = box.decrypt(secret);
 ```
 
-🔧 API Reference
-### Core Methods
+## 🔧 API Reference
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `put(String key, dynamic value)` | Stores data with the given key | `Future<void>` |
-| `get(String key)` | Retrieves data for the given key | `Future<dynamic>` |
-| `delete(String key)` | Removes data for the given key | `Future<void>` |
-| `encrypt(String plaintext)` | Encrypts a string | `String` |
-| `decrypt(String ciphertext)` | Decrypts an encrypted string | `String` |
-
-### Encryption Modes
-
-| Mode | Security Level | Key Length | Use Case |
-|------|----------------|------------|----------|
-| `EncryptionMode.none` | No encryption | - | Non-sensitive data |
-| `EncryptionMode.aes` | AES-256 | 32 chars | Highly sensitive data |
-| `EncryptionMode.fernet` | Fernet | 32 chars | General purpose encryption |
-
-
-Alternatively, for a more concise version:
+| `initialize()` | Prepares the storage for use | `Future<void>` |
+| `put(key, value)` | Stores data (auto-JSON & encryption) | `Future<void>` |
+| `get<T>(key)` | Retrieves and casts data | `Future<T?>` |
+| `delete(key)` | Removes data for the key | `Future<void>` |
+| `watch<T>(key)` | Stream of data changes | `Stream<T?>` |
+| `clear()` | Wipes all storage data | `Future<void>` |
+| `keys` | List of all stored keys | `Future<List<String>>` |
+| `all()` | Map of all stored data | `Future<Map<String, dynamic>>` |
 
 ## 💡 Best Practices
 
-| Practice | Description | Example |
-|----------|-------------|---------|
-| **🔑 Secure Keys** | Never hardcode encryption keys | Use environment variables |
-| **🚀 Proper Init** | Always initialize after binding | `WidgetsFlutterBinding.ensureInitialized()` |
-| **🛡️ Error Handling** | Wrap operations in try-catch | `try { await box.get(); } catch(e) {}` |
-| **📊 Data Types** | Store JSON-serializable data | Strings, Maps, Lists, numbers |
-| **🔒 Mode Selection** | Choose encryption based on sensitivity | Use AES for sensitive data |
+- **🔑 Storage of Secrets**: Always use `EncryptionMode.aes` for sensitive info.
+- **🚀 Initialization**: Call `await box.initialize()` before any storage calls.
+- **🛡️ Type Casting**: Use generics `box.get<String>('key')` to avoid manual casting.
+- **🔒 Key Management**: Securely store your encryption keys (e.g., using `flutter_secure_storage` or environment variables).
 
-🤝 Contributing
-We welcome contributions! Please feel free to submit issues and pull requests.
-
-📄 License
+## 📄 License
 This project is licensed under the MIT License.
 
 <div align="center">
 Made with ❤️ for the Flutter community
-
 </div>
