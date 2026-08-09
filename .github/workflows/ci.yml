@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test test/box_native_test.dart --coverage
+      - name: Enforce line coverage
+        run: |
+          awk -F: '/^LF:/{found+=$2} /^LH:/{hit+=$2} END { if (!found || hit/found < 0.80) exit 1 }' coverage/lcov.info
+      - run: flutter test --platform chrome test/box_web_test.dart
+      - run: flutter pub publish --dry-run
+      - name: Upload resolved dependency lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-lock
+          path: pubspec.lock
+          retention-days: 2
+
+  vulnerability-scan:
+    needs: verify
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.4.0
+    with:
+      download-artifact: dependency-lock
+      scan-args: |-
+        --lockfile=pubspec.lock
+      upload-sarif: false
+      fail-on-vuln: true
+    permissions:
+      actions: read
+      contents: read
+
+  native-platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test test/box_native_test.dart

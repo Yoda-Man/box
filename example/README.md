@@ -1,66 +1,25 @@
-# Example of usage `boxx`
+# Boxx example
 
-Without Encryption
 ```dart
-late Boxx box;
+import 'package:boxx/boxx.dart';
+
+late final Boxx box;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await initBox();
-}
-
-
-
-Future<void> initBox() async {
-  box = Boxx(mode: EncryptionMode.none);
+  box = Boxx(
+    name: 'example',
+    mode: EncryptionMode.none,
+  );
   await box.initialize();
+
+  await box.put('user', {'name': 'Alice'});
+  final user = await box.get<Map<String, dynamic>>('user');
+  debugPrint('$user');
 }
-
 ```
 
-With Encryption
-
-```dart
-late Boxx box;
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await initBox();
-}
-
-
-
-Future<void> initBox() async {
-  box = Boxx(mode: EncryptionMode.aes,encryptionKey: 'xxxxxxxx');
-  await box.initialize();
-}
-
-```
-
-## Usage
-
-Delete
-
-```dart
-    await box.delete('UserData');
-```
-
-Get
-```dart
- final contents = await box.get('UserData');
-```
-
-Put
-```dart
-await box.put('UserData', response.body);
-```
-
-Encryption/Decryption
-```dart
-  String t1 = box.encrypt('Hello World');
-  debugPrint(t1);
-  String t2 = box.decrypt(t1);
-  debugPrint(t2);
-```
+For encrypted storage, load at least 32 bytes of random key material from
+platform-backed secure storage and select `EncryptionMode.aes` or
+`EncryptionMode.fernet`. Never commit an application encryption key.

@@ -1,55 +1,80 @@
 import 'dart:async';
+
 import '../src/encryption.dart';
-import '../boxx.dart';
+import '../src/encryption_mode.dart';
+import '../src/record_codec.dart';
 
-/// Blueprint for boxx platform classes, providing the structure that must be followed by boxx subclasses
-/// to maintain a consistent API. This ensures that developers using boxx have a predictable and standardized interface to work with
+class _ChangeBus {
+  final StreamController<String> controller =
+      StreamController<String>.broadcast(sync: true);
+  int references = 0;
+}
+
+/// Platform storage contract shared by native and web implementations.
 abstract class BoxxInterface {
-  final String? encryptionKey;
-  final EncryptionMode? mode;
+  BoxxInterface({
+    required this.namespace,
+    required this.mode,
+    required this.encryptionKey,
+    required this.legacyMode,
+    required this.legacyEncryptionKey,
+  }) : codec = StoredRecordCodec(
+         mode: mode,
+         encryptionKey: encryptionKey,
+         legacyMode: legacyMode,
+         legacyEncryptionKey: legacyEncryptionKey,
+       ) {
+    final bus = _changeBuses.putIfAbsent(namespace, _ChangeBus.new);
+    bus.references++;
+    _bus = bus;
+  }
 
+  static final Map<String, _ChangeBus> _changeBuses = {};
+
+  final String namespace;
+  final String? encryptionKey;
+  final EncryptionMode mode;
+  final String? legacyEncryptionKey;
+  final EncryptionMode legacyMode;
+  final StoredRecordCodec codec;
   final EncryptAES aes = EncryptAES();
   final EncryptFernet fernet = EncryptFernet();
 
-  /// Stream controller to notify listeners of changes
-  final StreamController<String> _changeController =
-      StreamController<String>.broadcast();
+  late final _ChangeBus _bus;
+  bool _disposed = false;
 
-  /// Stream of altered keys
-  Stream<String> get onChange => _changeController.stream;
-
-  BoxxInterface({required this.mode, this.encryptionKey});
+  Stream<String> get onChange => _bus.controller.stream;
 
   Future<void> initialize();
-
-  /// Save to local storage
   Future<void> put(String key, dynamic value);
-
-  /// Delete from local storage
   Future<void> delete(String key);
-
-  /// Check if key exists in local storage
   Future<bool> exists(String key);
-
-  /// Get from local storage
   Future<dynamic> get(String key);
-
-  /// Clear all data from local storage
   Future<void> clear();
-
-  /// Get all keys
   Future<List<String>> getKeys();
-
-  /// Get all values
   Future<List<dynamic>> getValues();
 
-  /// Notify listeners that a key has changed
+  /// Emits an in-process change. Web overrides this to broadcast across tabs.
   void notifyListeners(String key) {
-    _changeController.add(key);
+    if (!_bus.controller.isClosed) {
+      _bus.controller.add(key);
+    }
   }
 
-  /// Close the stream controller
+  /// Emits a change received from another process or browser context.
+  void notifyRemoteListeners(String key) {
+    if (!_bus.controller.isClosed) {
+      _bus.controller.add(key);
+    }
+  }
+
   void dispose() {
-    _changeController.close();
+    if (_disposed) return;
+    _disposed = true;
+    _bus.references--;
+    if (_bus.references == 0) {
+      _changeBuses.remove(namespace);
+      unawaited(_bus.controller.close());
+    }
   }
 }

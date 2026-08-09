@@ -1,127 +1,153 @@
-<div align="center">
+# Boxx
 
-# 🗃️ Boxx
+Boxx is versioned key-value storage for Flutter on Android, iOS, Linux, macOS,
+Windows, and web. It supports exact JSON value persistence, named namespaces,
+change streams, and optional authenticated encryption.
 
-<img src="https://www.soundcentral.africa/assets/assets/boxx.jpg" alt="Boxx Logo" width="300">
+## Requirements
 
-### Secure • Reactive • Type-Safe Storage for Flutter
+- Dart 3.8.1 or later
+- Flutter 3.32.0 or later
+- JSON-encodable values
 
-**The developer-friendly storage solution with AES/Fernet encryption, generics, and real-time streams.**
-
-[![Pub Version](https://img.shields.io/pub/v/boxx?color=blue&label=pub.dev&logo=dart)](https://pub.dev/packages/boxx)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?logo=Flutter&logoColor=white)](https://flutter.dev)
-
-</div>
-
-## ✨ Key Features
-
-Boxx is built to be the most developer-friendly storage plugin for Flutter. It combines simplicity with powerful modern features.
-
-✅ **🛡️ Type-Safe** – Full support for Generics (`get<T>`).  
-✅ **📡 Reactive** – Watch any key for changes with standard Streams.  
-✅ **📦 JSON Ready** – Automatically handle Maps and Lists.  
-✅ **⚡ Blazing Fast** – Built-in memory cache for instant reads.  
-✅ **🔐 Secure** – Military-grade AES-256 or Fernet encryption.  
-✅ **🌐 Universal** – Consistent API across Mobile, Desktop, and Web.
-
-## 🚀 Getting Started
-
-### Installation
-
-Add Boxx to your `pubspec.yaml`:
+## Install
 
 ```yaml
 dependencies:
-  boxx: ^0.2.0
+  boxx: ^0.3.0
 ```
 
-### Quick Start
+## Basic usage
 
 ```dart
 import 'package:boxx/boxx.dart';
 
-late Boxx box;
+final box = Boxx(
+  name: 'application-settings',
+  mode: EncryptionMode.none,
+);
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize with AES encryption
-  box = Boxx(
-    mode: EncryptionMode.aes,
-    encryptionKey: 'your-32-character-encryption-key',
-  );
-  
-  await box.initialize();
-}
+await box.initialize();
+await box.put('theme', 'dark');
+final theme = await box.get<String>('theme');
+await box.delete('theme');
+box.dispose();
 ```
 
-## 🛠 Usage
+Operations initialize lazily, but explicit initialization is recommended so an
+unavailable storage backend fails during application startup.
 
-### Basic Operations
+## Authenticated encryption
+
+AES mode uses AES-256-GCM. Fernet mode uses authenticated Fernet tokens. Both
+derive per-record keys with PBKDF2-HMAC-SHA256 and a random salt.
+
+Supply at least 32 UTF-8 bytes of high-entropy random key material. Store the
+key in platform-backed secure storage. Do not embed it in source code, build
+arguments, or environment files shipped with the application.
+
 ```dart
-// Store any JSON-serializable data
-await box.put('user_profile', {
-  'name': 'John Doe',
-  'premium': true,
-  'joined': 2024,
+final vault = Boxx(
+  name: 'user-vault',
+  mode: EncryptionMode.aes,
+  encryptionKey: keyLoadedFromSecureStorage,
+);
+
+await vault.put('profile', {'name': 'Alice', 'roles': ['support']});
+final profile = await vault.get<Map<String, dynamic>>('profile');
+```
+
+Encrypted modes fail at construction when the key is absent or shorter than 32
+UTF-8 bytes. Boxx never silently falls back to plaintext.
+
+## Namespaces
+
+The `name` parameter isolates independent stores. Use a stable name and do not
+reuse a namespace with different current encryption settings.
+
+```dart
+final preferences = Boxx(name: 'preferences', mode: EncryptionMode.none);
+final cache = Boxx(name: 'cache', mode: EncryptionMode.none);
+```
+
+`clear()` affects only versioned records in the instance namespace. Legacy
+pre-0.3.0 records are removed individually after they are read and migrated;
+Boxx never bulk-deletes root-level files it cannot identify safely.
+
+## Values and keys
+
+Boxx accepts JSON values: strings, numbers, booleans, null, lists, and maps with
+string keys. Types are preserved across application restarts. Storage keys may
+contain path separators, punctuation, or Unicode and are limited to 4096 UTF-8
+bytes.
+
+```dart
+await box.put('literal-number', '42');
+await box.put('counter', 42);
+
+final keys = await box.keys;
+final values = await box.values;
+final entries = await box.all();
+```
+
+Requesting the wrong generic type throws `BoxxTypeMismatchException`.
+
+## Change streams
+
+```dart
+final subscription = box.watch<String>('status').listen((status) {
+  // The current value is emitted first, followed by committed changes.
 });
-
-// Retrieve with type safety
-final profile = await box.get<Map<String, dynamic>>('user_profile');
-print(profile?['name']); // Output: John Doe
-
-// Delete data
-await box.delete('user_profile');
 ```
 
-### 📡 Reactivity
-Listen to changes in real-time. Perfect for UI updates or state management.
+Changes are shared between Boxx instances in the same Dart isolate. On web they
+are also propagated to same-origin tabs through `BroadcastChannel`. Native
+changes performed outside the process are visible on the next read but cannot
+produce an in-process stream event.
+
+## Legacy migration
+
+Version 0.3.0 reads known pre-v2 keys in the default namespace and rewrites each
+record into the current format when it is read. Legacy records are not included
+in `keys` until migrated because old filenames cannot safely preserve original
+keys. Applications should read their known keys explicitly. When changing
+encryption mode or key, provide the previous settings:
 
 ```dart
-box.watch<bool>('is_logged_in').listen((status) {
-  print('User login status changed to: $status');
-});
+final box = Boxx(
+  mode: EncryptionMode.aes,
+  encryptionKey: newKey,
+  legacyMode: EncryptionMode.fernet,
+  legacyEncryptionKey: oldKey,
+);
 ```
 
-### 🔍 Storage Exploration
+Legacy string values such as `"42"` were stored ambiguously by versions before
+0.3.0 and may already decode as a number. That lost type information cannot be
+recovered automatically; validate migrated application data before removing the
+old application version.
+
+## Diagnostics and errors
+
+Boxx does not log keys or values. Connect the diagnostics callback to the host
+application's logging or error-reporting system:
+
 ```dart
-List<String> keys = await box.keys;
-List<dynamic> values = await box.values;
-Map<String, dynamic> allData = await box.all();
+final box = Boxx(
+  mode: EncryptionMode.none,
+  diagnostics: (event) {
+    logger.error(event.operation, event.error, event.stackTrace);
+  },
+);
 ```
 
-### 🔐 Manual Encryption
-Useful for encrypting strings before sending over the network or storing elsewhere.
+Stable exception categories include `BoxxConfigurationException`,
+`BoxxEncryptionException`, `BoxxCorruptDataException`, `BoxxStorageException`,
+`BoxxTypeMismatchException`, and `BoxxDisposedException`.
 
-```dart
-String secret = box.encrypt('Hello World');
-String original = box.decrypt(secret);
-```
+See [SUPPORT.md](SUPPORT.md) for recovery and troubleshooting and
+[RELEASE.md](RELEASE.md) for release and rollback procedures.
 
-## 🔧 API Reference
+## License
 
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `initialize()` | Prepares the storage for use | `Future<void>` |
-| `put(key, value)` | Stores data (auto-JSON & encryption) | `Future<void>` |
-| `get<T>(key)` | Retrieves and casts data | `Future<T?>` |
-| `delete(key)` | Removes data for the key | `Future<void>` |
-| `watch<T>(key)` | Stream of data changes | `Stream<T?>` |
-| `clear()` | Wipes all storage data | `Future<void>` |
-| `keys` | List of all stored keys | `Future<List<String>>` |
-| `all()` | Map of all stored data | `Future<Map<String, dynamic>>` |
-
-## 💡 Best Practices
-
-- **🔑 Storage of Secrets**: Always use `EncryptionMode.aes` for sensitive info.
-- **🚀 Initialization**: Call `await box.initialize()` before any storage calls.
-- **🛡️ Type Casting**: Use generics `box.get<String>('key')` to avoid manual casting.
-- **🔒 Key Management**: Securely store your encryption keys (e.g., using `flutter_secure_storage` or environment variables).
-
-## 📄 License
-This project is licensed under the MIT License.
-
-<div align="center">
-Made with ❤️ for the Flutter community
-</div>
+BSD 3-Clause. See [LICENSE](LICENSE).

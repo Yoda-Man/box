@@ -1,3 +1,20 @@
+## 0.3.0
+
+* **SECURITY**: Encryption now fails closed and requires at least 32 UTF-8 bytes
+  of key material.
+* **SECURITY**: New AES records use authenticated AES-256-GCM with per-record
+  PBKDF2 salts; Fernet keys are also derived per record.
+* **FIX**: Corrected the IndexedDB schema so web writes use out-of-line keys.
+* **FIX**: Added versioned JSON envelopes that preserve exact value types.
+* **FIX**: Replaced sanitized filenames with fixed-length hashed identifiers.
+* **FIX**: Removed the stale in-memory cache and coordinated change streams
+  across instances and browser tabs.
+* **FIX**: Native writes now use flushed temporary files and atomic replacement.
+* **NEW**: Added named namespaces, structured diagnostics, stable exception
+  categories, and automatic legacy-record migration on read.
+* **BREAKING**: Flutter 3.32 or later is required. Encrypted instances require a
+  32-byte key. See README migration guidance.
+
 ## 0.2.0
 
 *   **NEW**: Added type-safe generics to `get<T>()` and `put<T>()`.

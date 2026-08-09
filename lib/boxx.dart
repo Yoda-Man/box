@@ -1,157 +1,310 @@
 import 'dart:async';
+import 'dart:convert';
+
 import 'helper/boxx_factory.dart';
 import 'helper/boxx_interface.dart';
+import 'src/encryption_mode.dart';
+import 'src/exceptions.dart';
 
-/// Encryption Modes
-/// Modes are placed in this file to make it easier to implement
-enum EncryptionMode { aes, fernet, none }
+export 'src/encryption_mode.dart';
+export 'src/exceptions.dart';
 
-/// Class to handle all local storage
+/// Versioned, reactive key-value storage for Flutter.
 class Boxx {
-  final EncryptionMode? mode;
-  final String? encryptionKey;
-  late final BoxxInterface _platform;
-
-  /// Cache to speed up read operations
-  final Map<String, dynamic> _cache = {};
-
-  /// Constructor for Boxx
-  /// This will initialize the BoxxInterface based on the platform and encryption mode
-  /// It uses the BoxxFactory to get the correct implementation for the current platform
-  /// The encryptionKey is optional and can be used for AES or Fernet encryption
-  Boxx({required this.mode, this.encryptionKey}) {
+  Boxx({
+    required this.mode,
+    this.encryptionKey,
+    this.name = 'default',
+    EncryptionMode? legacyMode,
+    String? legacyEncryptionKey,
+    this.diagnostics,
+  }) : legacyMode = legacyMode ?? mode,
+       legacyEncryptionKey = (legacyMode ?? mode) == EncryptionMode.none
+           ? null
+           : (legacyEncryptionKey ?? encryptionKey) {
+    _validateConfiguration();
     _platform = BoxxFactory.instance.getBoxxInterface(
+      namespace: name,
       mode: mode,
       encryptionKey: encryptionKey,
+      legacyMode: this.legacyMode,
+      legacyEncryptionKey: this.legacyEncryptionKey,
     );
+  }
 
-    // Sync cache on changes
-    _platform.onChange.listen((key) {
-      if (key == '*') {
-        _cache.clear();
-      } else {
-        _cache.remove(key);
+  final EncryptionMode mode;
+  final String? encryptionKey;
+
+  /// Isolates records from other Boxx instances in the same application.
+  final String name;
+
+  /// Encryption mode used by pre-v2 records during automatic migration.
+  final EncryptionMode legacyMode;
+  final String? legacyEncryptionKey;
+
+  /// Optional structured failure callback. Keys and values are never included.
+  final BoxxDiagnostics? diagnostics;
+
+  late final BoxxInterface _platform;
+  final Set<StreamController<dynamic>> _watchControllers = {};
+  Future<void>? _initialization;
+  bool _initialized = false;
+  bool _disposed = false;
+
+  void _validateConfiguration() {
+    if (name.trim().isEmpty || name.length > 128) {
+      throw const BoxxConfigurationException(
+        'name must contain 1 to 128 characters',
+      );
+    }
+    _validateEncryption(
+      mode,
+      encryptionKey,
+      label: 'current',
+      minimumBytes: 32,
+    );
+    _validateEncryption(
+      legacyMode,
+      legacyEncryptionKey,
+      label: 'legacy',
+      minimumBytes: 1,
+    );
+  }
+
+  static void _validateEncryption(
+    EncryptionMode mode,
+    String? key, {
+    required String label,
+    required int minimumBytes,
+  }) {
+    if (mode == EncryptionMode.none) {
+      if (key != null) {
+        throw BoxxConfigurationException(
+          '$label encryption key must be omitted when mode is none',
+        );
       }
-    });
+      return;
+    }
+    if (key == null || utf8.encode(key).length < minimumBytes) {
+      throw BoxxConfigurationException(
+        '$label encryption requires a key of at least $minimumBytes UTF-8 bytes',
+      );
+    }
   }
 
-  /// Initialize the storage
-  /// This must be called before any other operation
-  Future<void> initialize() async {
-    await _platform.initialize();
+  /// Opens the backing store. Operations also initialize lazily.
+  Future<void> initialize() {
+    _ensureActive();
+    if (_initialized) return Future.value();
+    return _initialization ??= _initialize();
   }
 
-  /// Save to local storage
-  /// This will save the value to the local storage with the key
-  /// If the key already exists, it will overwrite the value
-  Future<void> put(String key, dynamic value) async {
-    await _platform.put(key, value);
-    _cache[key] = value;
+  Future<void> _initialize() async {
+    try {
+      await _platform.initialize();
+      _initialized = true;
+    } catch (error, stackTrace) {
+      _report('initialize', error, stackTrace);
+      _initialization = null;
+      _throwStorageFailure('initialize', error, stackTrace);
+    }
   }
 
-  /// Delete from local storage
-  /// This will delete the value from the local storage with the key
-  /// If the key does not exist, it will do nothing
-  Future<void> delete(String key) async {
-    await _platform.delete(key);
-    _cache.remove(key);
-  }
+  Future<void> put(String key, dynamic value) =>
+      _run('put', () => _platform.put(_validateKey(key), value));
 
-  /// Check if a key exists in local storage
-  /// This will return true if the key exists, false otherwise
-  Future<bool> exists(String key) async {
-    if (_cache.containsKey(key)) return true;
-    return await _platform.exists(key);
-  }
+  Future<void> delete(String key) =>
+      _run('delete', () => _platform.delete(_validateKey(key)));
 
-  /// Get from local storage
-  /// This will return the value stored in the local storage with the key
-  /// If the key does not exist, it will return null
-  /// You can specify a generic type T to get a casted result
+  Future<bool> exists(String key) =>
+      _run('exists', () => _platform.exists(_validateKey(key)));
+
   Future<T?> get<T>(String key) async {
-    if (_cache.containsKey(key)) {
-      return _cache[key] as T?;
+    final value = await _run('get', () => _platform.get(_validateKey(key)));
+    try {
+      return value as T?;
+    } on TypeError catch (error, stackTrace) {
+      final exception = BoxxTypeMismatchException(
+        expectedType: '$T',
+        actualType: value.runtimeType.toString(),
+      );
+      _report('get', exception, stackTrace);
+      Error.throwWithStackTrace(exception, stackTrace);
     }
-    final value = await _platform.get(key);
-    if (value != null) {
-      _cache[key] = value;
-    }
-    return value as T?;
   }
 
-  /// Clear all data from local storage
-  /// This will delete all data stored in the local storage
-  Future<void> clear() async {
-    await _platform.clear();
-    _cache.clear();
-  }
+  Future<void> clear() => _run('clear', _platform.clear);
 
-  /// Get all keys
-  Future<List<String>> get keys => _platform.getKeys();
+  Future<List<String>> get keys => _run('keys', _platform.getKeys);
 
-  /// Get all values
-  Future<List<dynamic>> get values => _platform.getValues();
+  Future<List<dynamic>> get values => _run('values', _platform.getValues);
 
-  /// Get all entries as a Map
   Future<Map<String, dynamic>> all() async {
-    final k = await keys;
-    final m = <String, dynamic>{};
-    for (final key in k) {
-      m[key] = await get(key);
-    }
-    return m;
+    final allKeys = await keys;
+    final allValues = await Future.wait<dynamic>(
+      allKeys.map<Future<dynamic>>((key) => get<dynamic>(key)),
+    );
+    return Map<String, dynamic>.fromIterables(allKeys, allValues);
   }
 
-  /// Watch for changes to a specific key
-  /// Returns a stream of the value associated with the key
-  /// This will emit the current value immediately upon subscription
-  Stream<T?> watch<T>(String key) async* {
-    yield await get<T>(key);
-    yield* _platform.onChange
-        .where((k) => k == key || k == '*')
-        .asyncMap((_) => get<T>(key));
+  /// Watches changes made by Boxx instances in this isolate and across web tabs.
+  Stream<T?> watch<T>(String key) {
+    _ensureActive();
+    final validKey = _validateKey(key);
+    late StreamController<T?> controller;
+    StreamSubscription<String>? subscription;
+    var initializing = true;
+    var changedDuringInitialization = false;
+    Future<void> pending = Future.value();
+
+    void enqueueRead() {
+      pending = pending.then((_) async {
+        try {
+          final value = await get<T>(validKey);
+          if (!controller.isClosed) controller.add(value);
+        } catch (error, stackTrace) {
+          if (!controller.isClosed) controller.addError(error, stackTrace);
+        }
+      });
+    }
+
+    controller = StreamController<T?>(
+      onListen: () {
+        subscription = _platform.onChange
+            .where((changedKey) => changedKey == validKey || changedKey == '*')
+            .listen((_) {
+              if (initializing) {
+                changedDuringInitialization = true;
+              } else {
+                enqueueRead();
+              }
+            }, onError: controller.addError);
+        enqueueRead();
+        unawaited(
+          pending.whenComplete(() {
+            initializing = false;
+            if (changedDuringInitialization) enqueueRead();
+          }),
+        );
+      },
+      onCancel: () async {
+        await subscription?.cancel();
+        _watchControllers.remove(controller);
+      },
+    );
+    _watchControllers.add(controller);
+    return controller.stream;
   }
 
-  /// Encrypt data using AES/Fernet
-  /// This will encrypt the data using AES encryption with the provided encryption key
-  String encrypt(String data) {
-    /// Check if data is empty
-    /// If it is empty, return an empty string
-    if (data.isEmpty) {
-      return '';
-    }
-    if (mode == EncryptionMode.aes && encryptionKey != null) {
-      return _platform.aes.encryptAES(data, encryptionKey!);
-    } else if (mode == EncryptionMode.fernet && encryptionKey != null) {
-      return _platform.fernet.encryptFernet(data, encryptionKey!);
-    } else {
-      throw Exception(
-        'Encryption mode is not set to AES/Fernet or encryption key is null',
-      );
-    }
-  }
+  /// Encrypts a standalone string using this instance's configured mode.
+  String encrypt(String data) => _runSync('encrypt', () {
+    if (data.isEmpty) return '';
+    return switch (mode) {
+      EncryptionMode.aes => _platform.aes.encryptAES(data, encryptionKey!),
+      EncryptionMode.fernet => _platform.fernet.encryptFernet(
+        data,
+        encryptionKey!,
+      ),
+      EncryptionMode.none => throw const BoxxConfigurationException(
+        'Manual encryption requires AES or Fernet mode',
+      ),
+    };
+  });
 
-  /// Decrypt data using AES/Fernet
-  /// This will decrypt the data using AES decryption with the provided encryption key
-  String decrypt(String data) {
-    /// Check if data is empty
-    /// If it is empty, return an empty string
-    if (data.isEmpty) {
-      return '';
-    }
-    if (mode == EncryptionMode.aes && encryptionKey != null) {
-      return _platform.aes.decryptAES(data, encryptionKey!);
-    } else if (mode == EncryptionMode.fernet && encryptionKey != null) {
-      return _platform.fernet.decryptFernet(data, encryptionKey!);
-    } else {
-      throw Exception(
-        'Encryption mode is not set to AES/Fernet or encryption key is null',
-      );
-    }
-  }
+  /// Decrypts a standalone string created by [encrypt].
+  String decrypt(String data) => _runSync('decrypt', () {
+    if (data.isEmpty) return '';
+    return switch (mode) {
+      EncryptionMode.aes => _platform.aes.decryptAES(data, encryptionKey!),
+      EncryptionMode.fernet => _platform.fernet.decryptFernet(
+        data,
+        encryptionKey!,
+      ),
+      EncryptionMode.none => throw const BoxxConfigurationException(
+        'Manual decryption requires AES or Fernet mode',
+      ),
+    };
+  });
 
-  /// Close the storage and internal resources
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    for (final controller in _watchControllers.toList()) {
+      unawaited(controller.close());
+    }
+    _watchControllers.clear();
     _platform.dispose();
+  }
+
+  String _validateKey(String key) {
+    if (key.isEmpty) {
+      throw const BoxxConfigurationException('Storage keys must not be empty');
+    }
+    if (utf8.encode(key).length > 4096) {
+      throw const BoxxConfigurationException(
+        'Storage keys must not exceed 4096 UTF-8 bytes',
+      );
+    }
+    return key;
+  }
+
+  Future<T> _run<T>(String operation, Future<T> Function() action) async {
+    _ensureActive();
+    await initialize();
+    try {
+      return await action();
+    } on BoxxException catch (error, stackTrace) {
+      _report(operation, error, stackTrace);
+      rethrow;
+    } catch (error, stackTrace) {
+      _report(operation, error, stackTrace);
+      _throwStorageFailure(operation, error, stackTrace);
+    }
+  }
+
+  T _runSync<T>(String operation, T Function() action) {
+    _ensureActive();
+    try {
+      return action();
+    } on BoxxException catch (error, stackTrace) {
+      _report(operation, error, stackTrace);
+      rethrow;
+    } catch (error, stackTrace) {
+      _report(operation, error, stackTrace);
+      Error.throwWithStackTrace(
+        BoxxEncryptionException('$operation failed', cause: error),
+        stackTrace,
+      );
+    }
+  }
+
+  void _ensureActive() {
+    if (_disposed) throw const BoxxDisposedException();
+  }
+
+  Never _throwStorageFailure(
+    String operation,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (error is BoxxException) Error.throwWithStackTrace(error, stackTrace);
+    Error.throwWithStackTrace(
+      BoxxStorageException(operation, error),
+      stackTrace,
+    );
+  }
+
+  void _report(String operation, Object error, StackTrace stackTrace) {
+    try {
+      diagnostics?.call(
+        BoxxDiagnosticEvent(
+          operation: operation,
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (_) {
+      // Diagnostics must never alter storage behavior.
+    }
   }
 }

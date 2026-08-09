@@ -1,10 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
-import 'encryption.dart';
-
-EncryptAES aes = EncryptAES();
-EncryptFernet fernet = EncryptFernet();
 
 ///AES encryption. AES keys must be exactly 128, 192, or 256 bits long, which corresponds to byte arrays of lengths
 ///16, 24, or 32, respectively.

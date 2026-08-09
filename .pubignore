@@ -1,0 +1,10 @@
+.dart_tool/
+.flutter-plugins-dependencies
+.github/
+.vscode/
+*.boxx
+*.iml
+build/
+coverage/
+lib/helper/boxx_android.dart
+test/box_test.dart
